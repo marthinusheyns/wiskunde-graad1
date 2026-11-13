@@ -59,6 +59,23 @@ for (const ws of W.CURRICULUM) {
   }
 }
 
+// Stemdekking: is elke stukkie wat die app kan sê opgeneem? (net 'n waarskuwing)
+const manPath = path.join(__dirname, '..', 'audio', 'manifest.json');
+if (fs.existsSync(manPath)) {
+  const have = new Set(JSON.parse(fs.readFileSync(manPath, 'utf8')).clips);
+  const missing = new Map();
+  let spoken = 0;
+  for (const ws of W.CURRICULUM) for (const [gen, params] of ws.ex) for (let i = 0; i < 50; i++) {
+    const q = W.G[gen](params);
+    for (const t of [q.say || q.prompt, q.hint, q.explain]) for (const p of W.AF.segments(t || '')) {
+      spoken++;
+      if (!have.has(W.AF.hash(p))) missing.set(p, (missing.get(p) || 0) + 1);
+    }
+  }
+  console.log(`Stem: ${have.size} opgeneemde stukkies; ${missing.size} ontbreek (${[...missing.values()].reduce((a, b) => a + b, 0)} van ${spoken} stukkies gesê)`);
+  if (missing.size) console.log('  bv.: ' + [...missing.keys()].slice(0, 8).map((s) => JSON.stringify(s)).join(', ') + '\n  Hardloop tools/build-audio.js om dit op te neem.');
+}
+
 const unused = Object.keys(W.G).filter(k => !k.startsWith('_') && !seenGens.has(k));
 console.log(`Werkblaaie: ${W.CURRICULUM.length}, generators: ${seenGens.size}, vrae getoets: ${total}`);
 if (unused.length) console.log('Ongebruikte generators:', unused.join(', '));

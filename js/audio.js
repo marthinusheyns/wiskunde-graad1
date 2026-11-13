@@ -67,3 +67,109 @@ W.Sfx = (function () {
     win: function () { if (!on()) return; [523, 659, 784, 1047].forEach(function (f, i) { tone(f, i * 0.13, 0.3, 'triangle', 0.16); }); }
   };
 })();
+
+/* Ingeboude, opgeneemde stem (Microsoft Azure se Afrikaanse neurale stem "Adri").
+   Elke stukkie teks is een keer opgeneem as audio/<hash>.mp3; die app speel die stukkies agter
+   mekaar. As 'n stukkie ontbreek, gebruik ons die toestel se eie stem as daar een is. */
+W.Voice = (function () {
+  var manifest = null, meta = null, loading = null, ctx = null, cache = {}, gen = 0, sources = [];
+
+  function load() {
+    if (!loading) {
+      loading = fetch('audio/manifest.json').then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (m) {
+          if (m && m.clips && m.clips.length) {
+            manifest = {}; m.clips.forEach(function (h) { manifest[h] = 1; }); meta = m;
+          }
+          return manifest;
+        }).catch(function () { return null; });
+    }
+    return loading;
+  }
+  function ac() {
+    if (!ctx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      try { ctx = new AC(); } catch (e) { return null; }
+    }
+    if (ctx.state === 'suspended') { try { ctx.resume(); } catch (e) { } }
+    return ctx;
+  }
+  function decode(c, buf) {
+    return new Promise(function (res, rej) {
+      var p = c.decodeAudioData(buf, res, rej);
+      if (p && p.then) p.then(res, rej);
+    });
+  }
+  function getBuf(h) {
+    if (!cache[h]) {
+      cache[h] = fetch('audio/' + h + '.mp3')
+        .then(function (r) { if (!r.ok) throw new Error('404'); return r.arrayBuffer(); })
+        .then(function (b) { return decode(ac(), b); })
+        .catch(function (e) { delete cache[h]; throw e; });
+    }
+    return cache[h];
+  }
+  function recorded() { return !!manifest; }
+  function available() { return recorded() || W.Say.available(); }
+
+  function stop() {
+    gen++;
+    sources.forEach(function (s) { try { s.stop(); } catch (e) { } });
+    sources = [];
+    W.Say.stop();
+  }
+
+  /* texts: een string of 'n lys strings wat na mekaar gesê word */
+  function speak(texts) {
+    texts = [].concat(texts).filter(Boolean);
+    stop();
+    if (!texts.length) return;
+    var pieces = [];
+    texts.forEach(function (t) { W.AF.segments(t).forEach(function (p) { pieces.push(p); }); });
+    if (!pieces.length) return;
+    var hs = pieces.map(W.AF.hash);
+    var missing = !manifest || hs.some(function (h) { return !manifest[h]; });
+    if (missing && W.Say.available()) { W.Say.speak(texts.join(' ')); return; }
+    if (!manifest) return;
+    var c = ac(); if (!c) return;
+    var my = gen;
+    var items = pieces.map(function (p, i) { return { p: p, h: hs[i] }; }).filter(function (x) { return manifest[x.h]; });
+    Promise.all(items.map(function (x) { return getBuf(x.h).catch(function () { return null; }); })).then(function (bufs) {
+      if (my !== gen) return;
+      var t = c.currentTime + 0.05;
+      bufs.forEach(function (b, i) {
+        if (!b) return;
+        var s = c.createBufferSource();
+        s.buffer = b; s.connect(c.destination); s.start(t);
+        sources.push(s);
+        t += b.duration + (/[.!?]$/.test(items[i].p) ? 0.25 : 0.04);
+      });
+    });
+  }
+
+  /* Laai al die klankgrepies af sodat die stem ook vanlyn werk (die diensbode stoor dit). */
+  function downloadAll(onProgress) {
+    return load().then(function () {
+      if (!manifest) return false;
+      var hs = Object.keys(manifest), i = 0, done = 0;
+      return new Promise(function (res) {
+        function next() {
+          if (i >= hs.length) return;
+          var h = hs[i++];
+          fetch('audio/' + h + '.mp3').catch(function () { }).then(function () {
+            done++;
+            if (onProgress) onProgress(done, hs.length);
+            if (done === hs.length) res(true); else next();
+          });
+        }
+        for (var k = 0; k < 6; k++) next();
+      });
+    });
+  }
+
+  return {
+    load: load, speak: speak, stop: stop, available: available, recorded: recorded,
+    downloadAll: downloadAll, info: function () { return meta; }
+  };
+})();

@@ -5,11 +5,13 @@
   var AVATARS = ['🦁', '🐯', '🐼', '🐨', '🐸', '🦄', '🐙', '🦊', '🐰', '🐻', '🐵', '🐧', '🦒', '🐢', '🐞', '🦋'];
   var TERM_COL = { 1: '#e53935', 2: '#fb8c00', 3: '#43a047', 4: '#1e88e5' };
   var sess = null, timer = null;
+  var DISCLAIMER = 'Hierdie app is gratis en is nie geaffilieer met die Departement van Basiese Onderwys nie. ' +
+    'Privaatheid: die app samel geen inligting in nie: geen advertensies en geen aanmelding nie. Vordering bly net op hierdie toestel.';
   var esc = U.esc;
 
   function render(html, cls) {
     clearTimeout(timer);
-    W.Say.stop();
+    W.Voice.stop();
     $app.className = cls || '';
     $app.innerHTML = html;
     window.scrollTo(0, 0);
@@ -45,7 +47,7 @@
       '<h2>Kies jou prentjie</h2>' +
       '<div class="avatars">' + AVATARS.map(function (a, i) { return '<button class="avpick' + (i === 0 ? ' on' : '') + '" data-act="av" data-a="' + a + '">' + a + '</button>'; }).join('') + '</div>' +
       '<button class="btn big go" data-act="saveProfile">Klaar ✓</button>' +
-      (first ? '' : '<button class="btn ghost" data-act="profiles">Terug</button>') +
+      (first ? '<p class="note fine">' + DISCLAIMER + '</p>' : '<button class="btn ghost" data-act="profiles">Terug</button>') +
       '</div>', 'bg-home');
     var inp = document.getElementById('pname');
     inp.focus();
@@ -176,7 +178,7 @@
     var q = sess.q, it = sess.items[sess.i], ws = byId(it.ws);
     render('<div class="play">' +
       '<div class="topbar"><button class="icon" data-act="quit">✕</button><div class="dots">' + dots() + '</div>' +
-      (W.Say.available() ? '<button class="icon" data-act="speak">🔊</button>' : '<span class="icon"></span>') + '</div>' +
+      (W.Voice.available() ? '<button class="icon" data-act="speak">🔊</button>' : '<span class="icon"></span>') + '</div>' +
       '<div class="wsline" style="--c:' + TERM_COL[ws.term] + '"><b>' + ws.id + '</b> ' + esc(ws.title) + '</div>' +
       '<div class="prompt">' + esc(q.prompt) + '</div>' +
       (q.visual ? '<div class="visual">' + q.visual + '</div>' : '') +
@@ -185,12 +187,12 @@
     renderInput();
     if (S.settings().autoSpeak) setTimeout(speakQ, 250);
   }
-  function speakQ() { if (sess && sess.q) W.Say.speak(sess.q.say || sess.q.prompt); }
+  function speakQ() { if (sess && sess.q) W.Voice.speak(sess.q.say || sess.q.prompt); }
 
   function renderInput() {
     var q = sess.q, inp = q.input, el = document.getElementById('answer');
     if (inp.kind === 'choice') {
-      var canSay = W.Say.available() && inp.layout === 'words' && inp.speakOptions !== false;
+      var canSay = W.Voice.available() && inp.layout === 'words' && inp.speakOptions !== false;
       el.innerHTML = '<div class="choices ' + (inp.layout || 'nums') + '">' + inp.options.map(function (o, i) {
         var btn = '<button class="ch" data-act="choose" data-i="' + i + '">' + (o.html != null ? o.html : esc(o.label)) + '</button>';
         return canSay ? '<div class="chwrap">' + btn + '<button class="sayopt" data-act="sayopt" data-i="' + i + '" aria-label="Lees">🔈</button></div>' : btn;
@@ -245,7 +247,7 @@
       W.Sfx.good();
       var pr = U.pick(AF.PRAISE);
       feedback('good', '<span class="big">✓</span> ' + pr);
-      W.Say.speak(pr);
+      W.Voice.speak(pr);
       timer = setTimeout(advance, 1300);
       return;
     }
@@ -257,7 +259,7 @@
       it.state = 'help';
       reveal();
       feedback('reveal', '<b>Kom ons kyk saam.</b> ' + esc(q.explain), true);
-      W.Say.speak(q.explain);
+      W.Voice.speak(q.explain);
       // Oefen hierdie soort vraag later weer (hoogstens 3 ekstra vrae)
       if (sess.extra < 3 && q.input.kind !== 'trace') {
         sess.extra++;
@@ -267,7 +269,7 @@
     }
     var msg = U.pick(AF.TRY_AGAIN);
     feedback('retry', '<b>' + esc(msg) + '</b> ' + esc(q.hint || ''));
-    W.Say.speak(msg + ' ' + (q.hint || ''));
+    W.Voice.speak([msg, q.hint]);
     timer = setTimeout(hideFeedback, 3500);
   }
   function advance() { hideFeedback(); sess.i++; nextQuestion(); }
@@ -296,7 +298,7 @@
     if (sess.review) stars = S.starsFor(ft, n);
     else stars = S.recordSession(ws.id, ft, n);
     W.Sfx.win();
-    var msg = stars === 3 ? 'Fantasties! Jy het dit bemeester!' : stars === 2 ? 'Baie goed gedoen!' : 'Goed geoefen! Probeer weer vir meer sterre.';
+    var msg = stars === 3 ? W.AF.PHRASES.results3 : stars === 2 ? W.AF.PHRASES.results2 : W.AF.PHRASES.results1;
     var next = !sess.review && CUR[ws.idx + 1];
     render('<div class="page center results">' +
       '<div class="confetti">' + U.range(1, 18).map(function (i) {
@@ -313,7 +315,7 @@
           '<button class="btn big go" data-act="intro" data-id="' + next.id + '">Volgende werkblad ➜</button>' +
           '<button class="btn" data-act="start" data-id="' + ws.id + '">↻ Speel weer</button>') +
       '<button class="btn ghost" data-act="home">🏠 Tuis</button></div></div>', 'bg-home');
-    W.Say.speak(msg);
+    W.Voice.speak(msg);
   }
 
   /* ============ Hersiening ============ */
@@ -368,8 +370,13 @@
       return '<tr><td>' + esc(W.SKILLS[k]) + '</td><td><span class="bar"><i style="width:' + pct + '%;background:' + (acc < 0.7 ? '#fb8c00' : '#43a047') + '"></i></span></td><td>' + pct + '% ' + flag + '<br><small>' + s.t + ' vrae</small></td></tr>';
     }).join('');
     var weak = CUR.filter(function (w) { return d.ws[w.id] && d.ws[w.id].best < 3; });
-    var voiceTxt = W.Say.available() ? 'Afrikaanse stem: <b>' + esc(W.Say.voiceName()) + '</b> <button class="btn small" data-act="testVoice">Toets</button>' :
-      'Geen Afrikaanse stem op hierdie toestel nie. Die vrae word nie hardop gelees nie. Probeer <b>Microsoft Edge</b> (het Afrikaanse stemme) of ’n Android-toestel met Google se teks-na-spraak (Afrikaans).';
+    var vinfo = W.Voice.info();
+    var voiceTxt = W.Voice.recorded() ?
+      'Stem: <b>Adri</b>, ’n Afrikaanse rekenaarstem (Microsoft Azure), ingebou in die app. Dit werk op enige foon of rekenaar. ' +
+      '<button class="btn small" data-act="testVoice">Toets</button><br>' +
+      '<button class="btn small" data-act="voiceDownload">Laai die stem af vir vanlyn gebruik' + (vinfo && vinfo.mb ? ' (' + vinfo.mb + ' MB)' : '') + '</button>' :
+      W.Say.available() ? 'Afrikaanse stem op hierdie toestel: <b>' + esc(W.Say.voiceName()) + '</b> <button class="btn small" data-act="testVoice">Toets</button>' :
+      'Die stem kon nie gelaai word nie. Maak seker jy is aan die internet gekoppel en probeer weer.';
     render('<div class="page parents">' +
       '<header class="hbar"><button class="icon" data-act="home">⬅</button><h1>Ouerhoek</h1><span></span></header>' +
       '<section><h2>' + p.avatar + ' ' + esc(p.name) + ' se vordering</h2>' +
@@ -389,7 +396,8 @@
       '<button class="btn small danger" data-act="delP">Verwyder speler</button></div></section>' +
       '<section><h2>Oor hierdie app</h2><p class="note">Gebou rondom die DBO se Reënboog-werkboeke <i>Wiskunde in Afrikaans, Graad 1</i>: Boek 1 (Kwartaal 1 en 2, werkblaaie 1 – 64) en Boek 2 (Kwartaal 3 en 4, werkblaaie 65 – 128). ' +
       'Elke werkblad in die app het dieselfde nommer as in die boek en oefen dieselfde vaardighede met nuwe vrae elke keer. Drie sterre beteken die kind het 90% of meer met die eerste probeerslag reg gehad. ' +
-      'Verkeerde antwoorde kry eers ’n wenk; ná ’n tweede fout wys die app die antwoord en kom later met ’n soortgelyke vraag terug. Vordering word net op hierdie toestel gestoor.</p></section>' +
+      'Verkeerde antwoorde kry eers ’n wenk; ná ’n tweede fout wys die app die antwoord en kom later met ’n soortgelyke vraag terug. Vordering word net op hierdie toestel gestoor.</p>' +
+      '<p class="note">' + DISCLAIMER + '</p></section>' +
       '</div>', 'bg-book');
     document.getElementById('qc').addEventListener('change', function (e) { S.setSetting('qCount', +e.target.value); });
     document.getElementById('as').addEventListener('change', function (e) { S.setSetting('autoSpeak', e.target.checked); });
@@ -433,7 +441,7 @@
       else document.getElementById('gate').classList.add('shake');
     },
     speak: function () { speakQ(); },
-    sayopt: function (d) { var o = sess.q.input.options[+d.i]; W.Say.speak(o.label); },
+    sayopt: function (d) { var o = sess.q.input.options[+d.i]; W.Voice.speak(o.label); },
     quit: function () {
       confirmBox('Wil jy ophou met hierdie werkblad?', 'Ja, stop', function () {
         var ws = sess && sess.ws;
@@ -475,7 +483,7 @@
       if (sess.locked) return;
       var inp = sess.q.input, n = sess.on.length;
       if (n === inp.target) return result(true);
-      sess.q.hint = 'Jy het ' + n + ' ingekleur. Ons soek ' + inp.target + '. ' + (n > inp.target ? 'Tik op ’n gekleurde vorm om dit weer wit te maak.' : 'Kleur nog ' + (inp.target - n) + ' in.');
+      sess.q.hint = W.AF.colourHint(n, inp.target);
       result(false);
     },
     pool: function (d) {
@@ -504,18 +512,23 @@
     traceClear: function () { if (sess.tracer) sess.tracer.clear(); },
     traceCheck: function () {
       if (sess.locked || !sess.tracer) return;
-      if (!sess.tracer.hasInk()) { feedback('retry', '<b>Trek eers met jou vinger oor die grys getal.</b>'); timer = setTimeout(hideFeedback, 2500); return; }
+      if (!sess.tracer.hasInk()) { feedback('retry', '<b>' + esc(W.AF.PHRASES.traceFirst) + '</b>'); W.Voice.speak(W.AF.PHRASES.traceFirst); timer = setTimeout(hideFeedback, 2500); return; }
       var sc = sess.tracer.score();
       var ok = sc.coverage >= 0.5 && sc.inside >= 0.6;
       if (ok || sess.attempts >= 1) {
         if (!ok) sess.attempts++;
         return result(true);
       }
-      sess.q.hint = sc.coverage < 0.5 ? 'Trek oor die hele getal, van bo tot onder.' : 'Bly binne die grys lyne.';
+      sess.q.hint = sc.coverage < 0.5 ? W.AF.PHRASES.traceAll : W.AF.PHRASES.traceInside;
       result(false);
       setTimeout(function () { if (sess && sess.tracer && !sess.locked) sess.tracer.clear(); }, 600);
     },
-    testVoice: function () { W.Say.speak('Hallo! Kom ons oefen wiskunde. Een, twee, drie, vier, vyf.'); },
+    testVoice: function () { W.Voice.speak(W.AF.PHRASES.test); },
+    voiceDownload: function (d, el) {
+      el.disabled = true;
+      W.Voice.downloadAll(function (done, total) { el.textContent = 'Laai af… ' + Math.round(100 * done / total) + '%'; })
+        .then(function (ok) { el.textContent = ok ? '✓ Die stem werk nou ook vanlyn' : 'Kon nie aflaai nie'; });
+    },
     rename: function () {
       var p = S.current(), n = window.prompt('Nuwe naam:', p.name);
       if (n && n.trim()) { S.renameProfile(p.id, n.trim()); showParents(); }
@@ -554,6 +567,7 @@
   W.App = { session: function () { return sess; } };
 
   // Begin
+  W.Voice.load();
   if (S.current()) showHome(); else showProfiles();
 
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {

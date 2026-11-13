@@ -113,14 +113,76 @@ W.AF = (function () {
       .replace(/\s*=\s*/g, ' is ')
       .replace(/_+|□|\?\?/g, ' hoeveel ')
       .replace(/\b(\d+)\b/g, function (m, d) { return numWord(+d); })
+      .replace(/\(?\b[23]D\)?/g, '')
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  /* Vaste sinne wat die app self sê (nie uit die vraaggenerators nie). */
+  var PHRASES = {
+    results3: 'Fantasties! Jy het dit bemeester!',
+    results2: 'Baie goed gedoen!',
+    results1: 'Goed geoefen! Probeer weer vir meer sterre.',
+    test: 'Hallo! Kom ons oefen wiskunde. Een, twee, drie, vier, vyf.',
+    traceAll: 'Trek oor die hele getal, van bo tot onder.',
+    traceInside: 'Bly binne die grys lyne.',
+    traceFirst: 'Trek eers met jou vinger oor die grys getal.',
+    colourLess: 'Tik op ’n gekleurde vorm om dit weer wit te maak.'
+  };
+  function colourHint(n, target) {
+    return 'Jy het ' + n + ' ingekleur. Ons soek ' + target + '. ' + (n > target ? PHRASES.colourLess : 'Kleur nog ' + (target - n) + ' in.');
+  }
+
+  /* Opgeneemde stem: breek teks op in stukkies (sinne, name en getalle) sodat elke stukkie
+     een keer opgeneem kan word en die app sinne daaruit kan saamstel.
+     Hierdie funksie word deur die app en deur tools/build-audio.js gebruik. */
+  var TOKEN_RE = new RegExp('\\bR\\s?(\\d+)|(\\d+)\\s?c\\b|(\\d+)|\\b(' + NAMES.join('|') + ')\\b', 'g');
+  var EMOJI_RE = /[←-⇿⌀-➿⬀-⯿️‍◀▶]|[\uD83C-\uDBFF][\uDC00-\uDFFF]/g;
+  function cleanChunk(s) {
+    return s.replace(EMOJI_RE, ' ')
+      .replace(/["“”]/g, '')
+      .replace(/\s*\+\s*/g, ' plus ')
+      .replace(/(^|\s)[–−-](?=\s|$)/g, '$1minus')
+      .replace(/\s*=\s*/g, ' is ')
+      .replace(/\.\.\.|…/g, ' ');
+  }
+  function cleanPiece(p) {
+    return p.replace(/^[\s,;:.\-–]+/, '').replace(/[\s,;:\-–]+$/, '').replace(/\s+/g, ' ').replace(/\s+([.!?])/g, '$1').trim();
+  }
+  function segments(text) {
+    // '?' wat los staan is 'n plekhouer ("3 en ? is 5"); '?' wat aan 'n woord vas is, is net 'n vraagteken
+    var out = [], last = 0, m;
+    var s = String(text || '').replace(/\s*\(?\b[23]D\)?/g, '')
+      .replace(/(^|\s)\?(?=\s|$)/g, '$1hoeveel').replace(/hoeveel$/, 'hoeveel?');
+    function pushText(chunk) {
+      cleanChunk(chunk).replace(/([.!?])\s+/g, '$1\n').split('\n').forEach(function (p) {
+        p = cleanPiece(p);
+        if (p && /[a-zA-ZÀ-ſ]/.test(p)) out.push(p);
+      });
+    }
+    TOKEN_RE.lastIndex = 0;
+    while ((m = TOKEN_RE.exec(s))) {
+      pushText(s.slice(last, m.index));
+      if (m[1]) { out.push(numWord(+m[1])); out.push('rand'); }
+      else if (m[2]) { out.push(numWord(+m[2])); out.push('sent'); }
+      else if (m[3]) out.push(numWord(+m[3]));
+      else out.push(m[4]);
+      last = TOKEN_RE.lastIndex;
+    }
+    pushText(s.slice(last));
+    return out;
+  }
+  /* Kort, stabiele lêernaam vir 'n stukkie (FNV-1a, 32 bis). */
+  function hash(s) {
+    var h = 0x811c9dc5;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    return ('0000000' + (h >>> 0).toString(16)).slice(-8);
   }
 
   return {
     numWord: numWord, ordinal: ordinal, THINGS: THINGS, COUNTABLE: COUNTABLE, ANIMALS: ANIMALS,
     FRUIT: FRUIT, VEHICLES: VEHICLES, thing: thing, count: count, ROW_ANIMALS: ROW_ANIMALS,
     NAMES: NAMES, DAYS: DAYS, MONTHS: MONTHS, COLOURS: COLOURS, PRAISE: PRAISE, TRY_AGAIN: TRY_AGAIN,
-    cap: cap, speakable: speakable
+    cap: cap, speakable: speakable, PHRASES: PHRASES, colourHint: colourHint, segments: segments, hash: hash
   };
 })();

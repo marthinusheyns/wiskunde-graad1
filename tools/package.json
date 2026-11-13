@@ -1,0 +1,11 @@
+{
+  "name": "wiskunde-tools",
+  "private": true,
+  "description": "Build tools for the Wiskunde Graad 1 app (voice recording).",
+  "scripts": {
+    "audio": "node build-audio.js"
+  },
+  "dependencies": {
+    "microsoft-cognitiveservices-speech-sdk": "^1.53.0"
+  }
+}
