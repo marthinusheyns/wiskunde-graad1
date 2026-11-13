@@ -61,7 +61,7 @@ W.LESSONS = (function () {
   function hopLesson(a, b, back, intro, finale) {
     var end = back ? a - b : a + b, w = windowFor(a, end), hops = [], f = [];
     f.push(F(line(w[0], w[1], { mark: [a], at: a }), intro || (back ? 'Kom ons tel terug op die getallelyn.' : 'Kom ons tel aan op die getallelyn.')));
-    f.push(F(line(w[0], w[1], { mark: [a], at: a }), 'Ons begin by ' + a + '.'));
+    f.push(F(line(w[0], w[1], { mark: [a], at: a }), 'Ons begin by ' + a + '. Ons spring ' + b + ' keer ' + (back ? 'terug.' : 'vorentoe.')));
     for (var i = 1; i <= b; i++) {
       var pos = back ? a - i : a + i;
       hops.push(back ? [pos + 1, pos] : [pos - 1, pos]);
@@ -366,22 +366,87 @@ W.LESSONS = (function () {
     var d = q.data || {}, nums;
     if (misId === 'telaan-begin' && (nums = addends(gen, d))) {
       var big = Math.max(nums[0], nums[1]), small = Math.min(nums[0], nums[1]);
-      if (small <= 12) return withIntro(hopLesson(big, small, false, null, nums[0] + ' plus ' + nums[1] + ' is ' + (nums[0] + nums[1]) + '.'), intro);
+      if (small <= 12) return dress(hopLesson(big, small, false, null, nums[0] + ' plus ' + nums[1] + ' is ' + (nums[0] + nums[1]) + '.'), gen, q, intro);
     }
     if (misId === 'telterug-begin' && (nums = takeAway(gen, d)) && nums[1] <= 12) {
-      return withIntro(hopLesson(nums[0], nums[1], true, null), intro);
+      return dress(hopLesson(nums[0], nums[1], true, null), gen, q, intro);
     }
     return L[gen](q, intro);
   };
-  /* Die intro (bv. "Kyk hoe ek 'n soortgelyke een doen" of die fout se sin) kom as 'n eie eerste raam,
-     sodat die les se eie eerste sin, wat die som stel, nie verlore gaan nie. */
-  function withIntro(frames, intro) {
-    return intro && frames.length ? [F(frames[0].html, intro)].concat(frames) : frames;
+
+  /* ---------- die probleem en die getallesin ----------
+     Die getallesin onder die prentjie: met '?' terwyl ons werk, en ingevul op die laaste raam
+     (konkreet -> prentjie -> getallesin). Waar die vraag self 'n getallesin is ("2 plus 2 is ?",
+     "8 + 4 = ?", "10 en hoeveel maak 12?"), gebruik ons dié skryfwyse, soos in die boek op daardie stadium. */
+  function sentence(gen, q) {
+    var d = q.data || {}, ans = q.input.answer, p = String(q.prompt).trim(), ask = null, done = null;
+    var plain = /\d/.test(p) && p.length <= 30 && /(^|\s)\?(\s|$)|hoeveel/.test(p) && !/[.]\s/.test(p) &&
+      !/^(Wat|Watter|Hoeveel|Daar|Elke|Verdeel|Ons|Tel)|padda/.test(p);
+    var R = function (n) { return 'R' + n; }, rep = function (x, n) { return U.range(1, n).map(function () { return x; }); };
+    if (plain) {
+      ask = p.replace(/hoeveel/, '?').replace(/(\S)\?$/, '$1');
+      return { ask: ask, done: ask.replace(/(^|\s)\?(?=\s|$)/, '$1' + (/R\d/.test(p) ? R(ans) : ans)) };
+    }
+    switch (gen) {
+      case 'count': case 'countInScene': case 'matchGroup': return { ask: '?', done: String(d.n) };
+      case 'frame': return d.n > 10 ? { ask: '?', done: '10 en ' + (d.n - 10) + ' maak ' + d.n } : { ask: '?', done: String(d.n) };
+      case 'moreLess': ask = (d.by === 1 ? 'een' : 'twee') + (d.more ? ' meer' : ' minder') + ' as ' + d.n + ' is ?'; break;
+      case 'bond': ask = d.k + ' en ? maak ' + d.n; break;
+      case 'pairs': return { ask: '? en ? maak ' + d.n, done: ans + ' maak ' + d.n };
+      // In woorde, soos Juffrou Padda dit sê (veilig ook vóór die tekens + en – in die boek kom)
+      case 'countOn': ask = d.a + (d.back ? ' minus ' : ' plus ') + d.b + ' is ?'; break;
+      case 'wordProblem':
+        ask = d.kind === 'add' ? d.a + ' plus ' + d.b + ' is ?' : d.kind === 'sub' || d.kind === 'compare' ? d.a + ' minus ' + d.b + ' is ?' : d.s + ' minus ' + d.b + ' is ?';
+        break;
+      case 'share':
+        if (d.askRem || d.total % d.k) return null;
+        return { ask: rep('?', d.k).join(' + ') + ' = ' + d.total, done: rep(d.total / d.k, d.k).join(' + ') + ' = ' + d.total };
+      case 'groups':
+        if (d.v === 0) { ask = d.g + (d.g === 1 ? ' groep' : ' groepe') + ' van ' + d.s + ' is ?'; break; }
+        ask = (d.v === 1 ? d.g * d.s : d.g * d.s + d.r) + ' is ? groepe van ' + d.s; break;
+      case 'repeatedAdd': return { ask: rep(d.s, d.g).join(' + ') + ' = ?', done: rep(d.s, d.g).join(' + ') + ' = ' + d.g * d.s };
+      case 'hops': return { ask: rep(d.step, d.n).join(' + ') + ' = ?', done: rep(d.step, d.n).join(' + ') + ' = ' + d.ans };
+      case 'gridPattern': {
+        var seq = [];
+        for (var v = Math.max(0, d.prev - 2 * d.step); v <= d.prev; v += d.step) seq.push(v); // soos die les begin
+        return { ask: seq.concat('?').join(', '), done: seq.concat(d.ans).join(', ') };
+      }
+      case 'missing': {
+        var s = d.seq.map(function (v, i) { return i === d.idx ? '?' : v; });
+        return { ask: s.join(', '), done: d.seq.join(', ') };
+      }
+      case 'between': return { ask: d.a + ', ?, ' + (d.a + 2), done: d.a + ', ' + (d.a + 1) + ', ' + (d.a + 2) };
+      case 'tenAndMore':
+        return d.v === 2 ? { ask: '10 en ' + (d.n - 10) + ' maak ?', done: '10 en ' + (d.n - 10) + ' maak ' + d.n } :
+          { ask: '10 en ? maak ' + d.n, done: '10 en ' + (d.n - 10) + ' maak ' + d.n };
+      case 'moneyTotal': {
+        var c = d.coins.slice().sort(function (a, b) { return b - a; }).map(V.moneyLabel).join(' + ');
+        return { ask: c + ' = ?', done: c + ' = ' + V.moneyLabel(d.total) };
+      }
+      case 'moneyChange': return { ask: R(d.have) + ' – ' + R(d.cost) + ' = ?', done: R(d.have) + ' – ' + R(d.cost) + ' = ' + R(d.ans) };
+      default: return null; // vergelyk-vrae: geen getallesin nie
+    }
+    return { ask: ask, done: ask.replace(/(^|\s)\?(?=\s|$)/, '$1' + ans) };
+  }
+
+  /* Elke les: [intro], die probleem (die vraag hardop, met die getallesin), die les self, en die
+     ingevulde getallesin op die laaste raam. Die intro (bv. "Kyk hoe ek 'n soortgelyke een doen" of die
+     fout se sin) kom as 'n eie eerste raam, sodat die les se eie sinne nie verlore gaan nie. */
+  function dress(frames, gen, q, intro) {
+    if (!frames.length) return frames;
+    var e = sentence(gen, q), n = frames.length;
+    frames = frames.map(function (f, i) {
+      var text = e && (i === n - 1 ? e.done : e.ask);
+      if (!text || /class="steps/.test(f.html)) return f;
+      return F(f.html + '<div class="steps' + (i === n - 1 ? ' done' : '') + '">' + U.esc(text) + '</div>', f.say, f.ms);
+    });
+    frames.unshift(F(frames[0].html, q.say || q.prompt));
+    return intro ? [F(frames[0].html, intro)].concat(frames) : frames;
   }
   Object.keys(L).forEach(function (k) {
     if (k === 'forMistake') return;
     var build = L[k];
-    L[k] = function (q, intro) { return withIntro(build(q), intro); };
+    L[k] = function (q, intro) { return dress(build(q), k, q, intro); };
   });
   return L;
 })();

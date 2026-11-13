@@ -8,7 +8,11 @@ in [TUTOR-DESIGN.md](TUTOR-DESIGN.md). Two details differ from the suggestions h
 - The red threshold is 6 answers, 3 misses and below 65%, chosen by simulation.
 - Choice answers aren't weighted lower than typed ones.
 
-Still open: improvements 1 and 5 to 9, the wording table and Phase 2.
+**Done in 1.3:** improvement 1. Each lesson reads the problem aloud first, shows the number sentence
+with "?" under the picture, and fills it in on the last frame. The hop lessons say "Ons spring 5 keer
+vorentoe.". No new recordings were needed.
+
+Still open: improvements 5 to 9, the wording table (after the teacher's review) and Phase 2.
 
 Reviewed: `js/tutor.js`, `js/tutor-data.js`, `js/tutor-lessons.js`, the tutor paths in `js/app.js`, `js/store.js`, `js/audio.js`, the core generators, and both design docs. Nothing under `app/` was changed.
 

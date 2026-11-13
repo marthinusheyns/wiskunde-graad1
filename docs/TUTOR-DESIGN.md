@@ -3,7 +3,8 @@
 Status: **Phase 1 built** (core number and operation skills, Grade 1). Awaiting teacher review of `SKILL-MAP.md`.
 An independent review (November 2026) with bugs, ranked improvements, wording fixes and Phase 2
 advice is in [`TUTOR-REVIEW-2026-11.md`](TUTOR-REVIEW-2026-11.md). Its mechanical bugs were fixed in
-version 1.1. Improvements 2 to 4 (options, hints, learner model) and the star decision were done in 1.2.
+version 1.1. Improvements 2 to 4 (options, hints, learner model) and the star decision were done in 1.2;
+improvement 1 (state the problem and show the number sentence) in 1.3.
 The skill map and mistake catalogue for teacher review are in [`SKILL-MAP.md`](SKILL-MAP.md),
 which is generated from the code by `node tools/skillmap-doc.js`.
 
@@ -63,6 +64,13 @@ back to the question.
   recognised mistake ("Ek dink jy het die 8 twee keer getel…"). A similar question then comes
   back later in the session (already the case today).
 - **🐸 Leer my** on the worksheet intro: a short lesson before starting.
+- **Every lesson states the problem first.** Juffrou Padda reads the question aloud (for
+  "Wys my hoe", the similar example, so the child knows which sum she is doing). The number
+  sentence stays under the picture with a "?" ("8 + 5 = ?"), and on the last frame it is filled in
+  and turns green ("8 + 5 = 13"). Where the question itself is a number sentence, the lesson uses
+  the question's own notation ("2 plus 2 is ?" early in the year, "8 + 4 = ?" later). Frog and
+  story sums are always written in words. On the number line she also says how many hops she will
+  make ("Ons spring 5 keer vorentoe.").
 - Lessons are short frame-by-frame sequences, with a picture plus one spoken sentence per
   frame. They follow the classroom methods: counting on with the number line, bonds with
   beads, making 10 with the ten-frame, counting in groups, sharing one by one, counting money by

@@ -57,7 +57,7 @@ Die vaardighede wat 'n kind nodig het, in volgorde. "Les" beteken Juffrou Padda 
 | `compareNumbers` | Woorde: grootste, kleinste, groter, kleiner → Herken getalle (syfers) → Vergelyk hoeveelhede en getalle | ja |
 | `count` | Tel een vir een | ja |
 | `countInScene` | Tel een vir een | ja |
-| `countOn` | Getalvolgorde: voor, ná en tussen → Tel aan vanaf ’n getal → Tel terug | ja |
+| `countOn` | Getalvolgorde: voor, ná en tussen → Tel terug → Tel aan vanaf ’n getal | ja |
 | `double` | Woorde: dubbel en helfte → Verdubbel | ja |
 | `frame` | Sien hoeveel in ’n tienraam | ja |
 | `gridPattern` | Getalvolgorde: voor, ná en tussen → Tel in sprongetjies (2, 5, 10) | ja |
