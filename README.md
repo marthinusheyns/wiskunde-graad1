@@ -2,11 +2,15 @@
 
 Sponsored by [Heynstech](https://www.heynstech.com/).
 
+Open source under the MIT licence: see [LICENSE](LICENSE).
+
 An Afrikaans maths practice app for Grade 1 learners. It follows the DBE Rainbow Workbooks
 *Wiskunde in Afrikaans, Graad 1*:
 
 - **Boek 1**: Kwartaal 1 & 2, worksheets 1–64 (with 12a/b, 24a/b, 48a/b, 60a/b, 64a/b)
 - **Boek 2**: Kwartaal 3 & 4, worksheets 65–128
+
+Not affiliated with or endorsed by the Department of Basic Education.
 
 Every worksheet in the app has the same number, title and book page as the printed workbook. When
 the class does worksheet 45 at school, the child can practise worksheet 45 at home. Each session

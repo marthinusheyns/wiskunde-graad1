@@ -1,2 +1,5 @@
 node_modules/
 tools/notes.local.json
+
+# Workbook PDFs are the DBE's material: never commit them
+*.pdf
