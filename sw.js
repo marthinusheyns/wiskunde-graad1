@@ -1,5 +1,5 @@
 /* Diensbode: hou die app vanlyn beskikbaar nadat dit een keer gelaai is. */
-var CACHE = 'wiskunde-gr1-v11';
+var CACHE = 'wiskunde-gr1-v12';
 var AUDIO = 'wiskunde-gr1-audio-v1'; // stemgrepies verander nooit (die naam is 'n hash van die teks)
 var SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/styles.css',
@@ -21,9 +21,10 @@ self.addEventListener('fetch', function (e) {
   if (e.request.method !== 'GET') return;
   var url = new URL(e.request.url);
   var isFont = /fonts\.(googleapis|gstatic)\.com$/.test(url.hostname);
-  if (url.origin !== location.origin && !isFont) return;
-  // Stemgrepies: kas eerste (hulle verander nooit nie)
-  if (/\/audio\/[0-9a-f]{8}\.mp3$/.test(url.pathname)) {
+  var isStem = url.hostname === 'wiskunde-stem.azurewebsites.net' && url.pathname === '/api/say' && url.searchParams.has('t');
+  if (url.origin !== location.origin && !isFont && !isStem) return;
+  // Stemgrepies, ook dié van die stembediener: kas eerste (hulle verander nooit nie)
+  if (isStem || /\/audio\/[0-9a-f]{8}\.mp3$/.test(url.pathname)) {
     e.respondWith(caches.open(AUDIO).then(function (c) {
       return c.match(e.request).then(function (hit) {
         return hit || fetch(e.request).then(function (res) { if (res.ok) c.put(e.request, res.clone()); return res; });

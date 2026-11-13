@@ -130,29 +130,63 @@ W.Voice = (function () {
   function estimate(texts) { return 600 + texts.join(' ').length * 60; }
   function wait(ms) { return new Promise(function (res) { pending.push(res); setTimeout(res, ms); }); }
 
+  /* ---------- Stembediener (server/): hele sinne wat nie vooraf opgeneem is nie, bv. storiesomme ----------
+     Die eerste keer maak die bediener die sin met dieselfde stem en stoor dit; die diensbode (sw.js) hou dit
+     daarna op die foon. Geen internet, of te stadig: dan die stukkies, soos altyd. */
+  var CLOUD = 'https://wiskunde-stem.azurewebsites.net/api/say', CLOUD_WAIT = 1500;
+  var cloud = {}, cloudNo = {};
+  function online() { return navigator.onLine !== false; }
+  // Sou hierdie sin uit stukkies saamgestel word? Dan vra ons die bediener.
+  function viaCloud(s) { return !!(manifest && online() && !manifest[W.AF.clip(s.say)] && !cloudNo[s.say] && W.AF.segments(s.raw).length > 1); }
+  function cloudBuf(say) {
+    if (!cloud[say]) {
+      // v: weergawe van die uitspraak-reëls (W.AF.VOICE_V), sodat fone 'n nuwe sin kry as dit verander
+      cloud[say] = fetch(CLOUD + '?v=' + W.AF.VOICE_V + '&t=' + encodeURIComponent(say), { mode: 'cors', credentials: 'omit' })
+        .then(function (r) { if (!r.ok) { if (r.status === 400) cloudNo[say] = 1; throw new Error(r.status); } return r.arrayBuffer(); })
+        .then(function (b) { return decode(ac(), b); })
+        .catch(function (e) { delete cloud[say]; throw e; });
+    }
+    return cloud[say];
+  }
+  function within(p, ms) { return new Promise(function (res, rej) { p.then(res, rej); setTimeout(rej, ms); }); }
+  /* Begin solank haal (bv. sodra 'n vraag op die skerm kom), sodat dit gereed is as die stem praat. */
+  function prefetch(texts) {
+    [].concat(texts).filter(Boolean).forEach(function (t) {
+      W.AF.sentences(t).forEach(function (s) { if (viaCloud(s)) cloudBuf(s.say).catch(function () { }); });
+    });
+  }
+  /* Maak die bediener wakker as die app oopmaak (die eerste versoek ná 'n ruk is stadiger). */
+  function wake() { if (online()) fetch(CLOUD + '?ping=1', { mode: 'cors', credentials: 'omit', cache: 'no-store' }).catch(function () { }); }
+
   /* texts: een string of 'n lys strings wat na mekaar gesê word.
      Gee 'n Promise terug wat klaar is wanneer die stem klaar gepraat het. */
   function speak(texts) {
     texts = [].concat(texts).filter(Boolean);
     stop();
     if (!texts.length) return Promise.resolve();
-    // Elke sin: die opname van die hele sin as daar een is (natuurlike toon), anders stukkies
-    var pieces = [], hs = [], whole = [];
+    var my = gen;
+    // Elke sin: die opname van die hele sin as daar een is (natuurlike toon), anders die bediener, anders stukkies
+    var plans = [];
     texts.forEach(function (t) {
       W.AF.sentences(t).forEach(function (s) {
         var h = W.AF.clip(s.say);
-        if (manifest && manifest[h]) { pieces.push(s.say); hs.push(h); whole.push(true); return; }
-        W.AF.segments(s.raw).forEach(function (p) { pieces.push(p); hs.push(W.AF.clip(p)); whole.push(false); });
+        if (manifest && manifest[h]) { plans.push([{ p: s.say, h: h, w: true }]); return; }
+        var pieces = W.AF.segments(s.raw).map(function (p) { return { p: p, h: W.AF.clip(p), w: false }; });
+        plans.push(viaCloud(s) ? within(cloudBuf(s.say), CLOUD_WAIT).then(function (b) { return [{ p: s.say, buf: b, w: true }]; }, function () { return pieces; }) : pieces);
       });
     });
-    if (!pieces.length) return Promise.resolve();
-    var missing = !manifest || hs.some(function (h) { return !manifest[h]; });
-    if (missing && W.Say.available()) return W.Say.speak(texts.join(' ')) || wait(estimate(texts));
-    var c = manifest && ac();
-    if (!c) return wait(estimate(texts));
-    var my = gen;
-    var items = pieces.map(function (p, i) { return { p: p, h: hs[i], w: whole[i] }; }).filter(function (x) { return manifest[x.h]; });
-    return Promise.all(items.map(function (x) { return getBuf(x.h).catch(function () { return null; }); })).then(function (bufs) {
+    if (!plans.length) return Promise.resolve();
+    return Promise.all(plans).then(function (lists) {
+      if (my !== gen) return;
+      var items = [].concat.apply([], lists);
+      var missing = !manifest || items.some(function (x) { return !x.buf && !manifest[x.h]; });
+      if (missing && W.Say.available()) return W.Say.speak(texts.join(' ')) || wait(estimate(texts));
+      var c = manifest && ac();
+      if (!c) return wait(estimate(texts));
+      items = items.filter(function (x) { return x.buf || manifest[x.h]; });
+      return Promise.all(items.map(function (x) { return x.buf || getBuf(x.h).catch(function () { return null; }); })).then(function (bufs) { return play(c, items, bufs); });
+    });
+    function play(c, items, bufs) {
       if (my !== gen) return;
       var t = c.currentTime + 0.05;
       bufs.forEach(function (b, i) {
@@ -163,7 +197,7 @@ W.Voice = (function () {
         t += b.duration + (items[i].w || /[.!?]$/.test(items[i].p) ? 0.25 : 0.04);
       });
       return wait(Math.max(0, (t - c.currentTime) * 1000));
-    });
+    }
   }
 
   /* Laai al die klankgrepies af sodat die stem ook vanlyn werk (die diensbode stoor dit). */
@@ -188,6 +222,7 @@ W.Voice = (function () {
 
   return {
     load: load, speak: speak, stop: stop, available: available, recorded: recorded,
+    prefetch: prefetch, wake: wake, cloudUrl: CLOUD,
     downloadAll: downloadAll, info: function () { return meta; }
   };
 })();

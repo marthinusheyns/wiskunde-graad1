@@ -187,10 +187,25 @@ W.AF = (function () {
       .replace(/(\d+)\s?c\b/g, function (m, d) { return numWord(+d) + ' sent'; })
       .replace(/\d+/g, function (d) { return numWord(+d); });
   }
+  /* Woorde wat die stem in 'n sin swak sê, word vervang deur 'n spelling wat hy beter sê (op die oor gekies).
+     Dit geld vir hele sinne: die vooraf opnames én die stembediener (server/). Die opname se lêernaam is die
+     hash van die vervangde teks, so 'n verandering hier gee vanself nuwe lêers (fone laai dit dan af).
+     Woorde wat alleen gesê word (bv. tel), gebruik eerder SPLICE in tools/build-audio.js.
+     JOIN: woorde wat in 'n sin uit twee opnames saamgelas word, by die stil "t" (server/src/join.js): die sin
+     met die kop-woord tot by sy "t", dan die sin met die stert-woord. Albei op die oor gekies (2026-11-13). */
+  var SAY = { 'negentien': 'neëntien' };
+  var JOIN = { 'dertien': ['dertig', 'veertien'] };
+  var SAY_RE = Object.keys(SAY).map(function (w) { return [new RegExp('(^|[^\\p{L}-])(' + w + ')(?![\\p{L}-])', 'giu'), SAY[w]]; });
+  function sayFix(t) {
+    SAY_RE.forEach(function (x) {
+      t = t.replace(x[0], function (m, pre, word) { return pre + (word[0] !== word[0].toLowerCase() ? x[1][0].toUpperCase() + x[1].slice(1) : x[1]); });
+    });
+    return t;
+  }
   function sentences(text) {
     var out = [];
     cleanChunk(prep(text)).replace(/([.!?])\s+/g, '$1\n').split('\n').forEach(function (raw) {
-      var say = cleanPiece(spell(raw));
+      var say = sayFix(cleanPiece(spell(raw)));
       if (say && /[a-zA-ZÀ-ſ]/.test(say)) out.push({ raw: raw, say: say });
     });
     return out;
@@ -202,15 +217,27 @@ W.AF = (function () {
     return ('0000000' + (h >>> 0).toString(16)).slice(-8);
   }
   /* Die lêernaam van 'n opname. 'n Opname wat oorgedoen is, kry 'n nuwe naam, want fone hou grepies
-     vir altyd in hul kas (sw.js). Die stem sê "dertien" en "negentien" alleen swak; tools/build-audio.js
-     stel dié saam uit dele van ander getalle (SPLICE daar). */
-  var RETAKE = { 'dertien': 2, 'negentien': 2 };
-  function clip(s) { return hash(RETAKE[s] ? s + '#' + RETAKE[s] : s); }
+     vir altyd in hul kas (sw.js). Elke sin of stukkie met 'n RETAKE-woord kry die weergawe agter sy naam:
+     "dertien" alleen (SPLICE in tools/build-audio.js) en elke sin met "dertien" (JOIN) is so oorgedoen. */
+  var RETAKE = {
+    'dertien': 2, 'negentien': 2,
+    'tien plus sewe is sewentien.': 2 // die eerste opname het 'n ekstra "agt" aan die einde gehad
+  };
+  var RETAKE_RE = Object.keys(RETAKE).map(function (w) {
+    return [new RegExp('(^|[^\\p{L}-])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\p{L}-])', 'iu'), RETAKE[w]];
+  });
+  function clip(s) {
+    var v = 0;
+    RETAKE_RE.forEach(function (x) { if (x[1] > v && x[0].test(s)) v = x[1]; });
+    return hash(v ? s + '#' + v : s);
+  }
+  /* Weergawe van die uitspraak-reëls; dit gaan saam na die stembediener, sodat fone nuwe sinne kry as dit verander. */
+  var VOICE_V = hash(JSON.stringify([SAY, JOIN, RETAKE]));
 
   return {
     numWord: numWord, ordinal: ordinal, THINGS: THINGS, COUNTABLE: COUNTABLE, ANIMALS: ANIMALS,
     FRUIT: FRUIT, VEHICLES: VEHICLES, thing: thing, count: count, ROW_ANIMALS: ROW_ANIMALS,
     NAMES: NAMES, DAYS: DAYS, MONTHS: MONTHS, COLOURS: COLOURS, PRAISE: PRAISE, TRY_AGAIN: TRY_AGAIN,
-    cap: cap, speakable: speakable, PHRASES: PHRASES, colourHint: colourHint, segments: segments, sentences: sentences, hash: hash, clip: clip
+    cap: cap, speakable: speakable, PHRASES: PHRASES, colourHint: colourHint, segments: segments, sentences: sentences, hash: hash, clip: clip, SAY: SAY, JOIN: JOIN, VOICE_V: VOICE_V
   };
 })();

@@ -80,9 +80,20 @@ text-to-speech of their own.
   number is recorded whole, for every number combination a lesson can produce. The same goes for
   the questions she reads aloud (`W.AF.sentences`). That gives a natural tone, with no break at each
   number. The lessons still use the question's own numbers; only the recording is done in advance.
-- **Pieces** for everything else: spoken text is split into reusable sentences, names and numbers
-  (`W.AF.segments`). This covers the stories (word problems and shop sums), whose 20 names ×
-  things × numbers would be more than 20,000 sentences.
+- **Voice server** for sentences that aren't recorded in advance, such as the stories (word problems
+  and shop sums): about 50,000 possible sentences, too many to record. The app asks the voice server
+  (`server/`, see below) for the whole sentence, in the same voice. Online only; see below.
+- **Pieces** as the fallback: spoken text is split into reusable sentences, names and numbers
+  (`W.AF.segments`). Used offline, or when the voice server is slow or unavailable.
+- **Better spellings and joins inside sentences**, chosen by ear:
+  - `SAY` in `js/af.js` replaces a word by a spelling the voice says better, before recording or
+    asking the server ("negentien" → "neëntien").
+  - `JOIN` records the sentence twice, once with a head word and once with a tail word in its place,
+    and joins them at the silent "t" ("dertien": the sentence with "dertig" up to the "t", then the
+    sentence with "veertien"). `server/src/join.js` does this for both the recordings and the server,
+    using Azure's word timings.
+  - File names change automatically: the hash of the replaced text, and `RETAKE` for words that are
+    joined. The server URL carries `W.AF.VOICE_V`, so phones fetch new server sentences too.
 - **Joined numbers:** the voice says "dertien" and "negentien" badly on their own. So
   `tools/build-audio.js` builds them from two other recordings, joined at the silent "t"
   ("der" from *dertig* + "tien" from *veertien*; "neën" from *neëntien* + "tien" from *sewentien*,
@@ -109,6 +120,40 @@ node check-audio.js --durations   # flags clips whose length doesn't fit their t
 ```
 
 `node tests/smoke.js` warns if any spoken text has no recording. Never commit the key.
+
+### Voice server (`server/`)
+
+An Azure Function, `https://wiskunde-stem.azurewebsites.net/api/say?t=<sentence>`, in the resource
+group `rg-wiskunde-stem` (the same subscription as the notes storage):
+
+- The first time a sentence is asked for, it asks Azure Speech for it (free F0 resource
+  `wiskunde-stem-f0`, same voice) and stores the mp3 in the private container `stem` of the storage
+  account `wiskundenotas`. After that every phone gets the stored copy, and the service worker keeps
+  it on the phone for good.
+- **Only the app's own sentences:** every word must be on the approved word list in
+  `server/config.json` (all words the app can say), or be a number word (built from number parts,
+  so it works up to millions for later grades). Anything else gets 400. Requests from other websites
+  get 403; CORS allows only `https://marthinusheyns.github.io`.
+- **Speed:** the app prepares the next question while the child works on the current one, and asks
+  the server for its sentences then. If a sentence isn't there within 1.5 s, the app uses the pieces.
+- **Cost:** the F0 voice tier can't create charges; when its 500,000 characters a month run out, the
+  server answers 503 and the app uses the pieces. The Function App runs on the consumption plan with a
+  daily cap (`dailyMemoryTimeQuota` 5,000 GB-s, within the free allowance). No Application Insights.
+- **Secrets** are app settings in Azure only (`SPEECH_KEY`, `SPEECH_REGION`, `STEM_URL`, `STEM_SAS`
+  for the stored access policy `stem-rcw`, `ALLOWED_ORIGINS`). Revoke the storage link by deleting
+  that policy.
+- **Privacy:** only the sentence text is sent (from the app's fixed word list), never anything about
+  the child.
+
+**Updating it** (after new texts, e.g. Grade 2, or a change to `SAY`):
+
+```
+node tools/build-audio.js        # updates tools/audio-pieces.json (needs the key, see above)
+node tools/say-config.js         # writes server/config.json (word list + spellings)
+cd server && npm install --omit=dev
+# zip host.json, package.json, config.json, src/ and node_modules/, then:
+az functionapp deployment source config-zip -g rg-wiskunde-stem -n wiskunde-stem --subscription "<subscription>" --src stem.zip
+```
 
 ### Notes from parents ("Help om die app te verbeter")
 
@@ -164,7 +209,9 @@ app/
   tests/smoke.js        generates ~100k questions and validates every one
   tests/gallery.html    one sample of every question type, for visual checks
   audio/                recorded voice clips + manifest.json
+  server/               the voice server (Azure Function): src/say.js, config.json (word list)
   tools/                build-audio.js (records the voice), check-audio.js (verifies it),
+                        say-config.js (the voice server's word list),
                         notes.js (picks up parents' notes), skillmap-doc.js (docs/SKILL-MAP.md)
 ```
 

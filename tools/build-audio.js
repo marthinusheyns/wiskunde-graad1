@@ -15,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const { spawnSync } = require('child_process');
+const { joinFor, replaceWord, joinTakes } = require('../server/src/join'); // dieselfde saamlas as die stembediener
 
 const ROOT = path.join(__dirname, '..');
 const AUDIO = path.join(ROOT, 'audio');
@@ -116,11 +117,12 @@ function synth(sdk, cfg, batch) {
     `</prosody></voice></speak>`;
   return new Promise((resolve, reject) => {
     const s = new sdk.SpeechSynthesizer(cfg, null);
-    const marks = [];
+    const marks = [], words = [];
     s.bookmarkReached = (_, e) => marks.push({ i: Number(e.text), off: e.audioOffset });
+    s.wordBoundary = (_, e) => words.push({ text: e.text, off: e.audioOffset, dur: e.duration }); // vir JOIN
     s.speakSsmlAsync(ssml, (res) => {
       s.close();
-      if (res.reason === sdk.ResultReason.SynthesizingAudioCompleted) resolve({ pcm: Buffer.from(res.audioData), marks });
+      if (res.reason === sdk.ResultReason.SynthesizingAudioCompleted) resolve({ pcm: Buffer.from(res.audioData), marks, words });
       else reject(new Error(sdk.CancellationDetails.fromResult(res).errorDetails || 'onbekende fout'));
     }, (err) => { s.close(); reject(new Error(err)); });
   });
@@ -196,9 +198,12 @@ async function main() {
   const pieces = collectPieces(W);
   fs.mkdirSync(AUDIO, { recursive: true });
   const all = [...pieces].filter(([h]) => !fs.existsSync(path.join(AUDIO, h + '.mp3'))).map(([h, text]) => ({ h, text })).slice(0, LIMIT);
-  const todo = all.filter((t) => !SPLICE[t.text]), spliced = all.filter((t) => SPLICE[t.text]);
+  const spliced = all.filter((t) => SPLICE[t.text]);
+  const joins = all.filter((t) => !SPLICE[t.text] && joinFor(t.text, W.AF.JOIN)).map((t) => Object.assign(t, { j: joinFor(t.text, W.AF.JOIN) }));
+  const todo = all.filter((t) => !SPLICE[t.text] && !t.j);
   const chars = todo.reduce((n, t) => n + t.text.length, 0);
-  console.log(`Nog op te neem: ${todo.length} stukkies, ${chars} karakters` + (spliced.length ? `; saam te stel: ${spliced.map((t) => t.text).join(', ')}` : ''));
+  console.log(`Nog op te neem: ${todo.length} stukkies, ${chars} karakters` + (spliced.length ? `; saam te stel: ${spliced.map((t) => t.text).join(', ')}` : '') +
+    (joins.length ? `; sinne om saam te las: ${joins.length}` : ''));
   if (DRY || !all.length) { console.log(writeManifest(pieces)); return; }
 
   const key = process.env.AZURE_SPEECH_KEY, region = process.env.AZURE_SPEECH_REGION;
@@ -208,13 +213,17 @@ async function main() {
   cfg.speechSynthesisOutputFormat = sdk.SpeechSynthesisOutputFormat.Raw24Khz16BitMonoPcm;
 
   // groepe van hoogstens ~1500 karakters / 60 stukkies
-  const batches = [];
-  let cur = [], len = 0;
-  for (const t of todo) {
-    if (cur.length && (len + t.text.length > 1500 || cur.length >= 60)) { batches.push(cur); cur = []; len = 0; }
-    cur.push(t); len += t.text.length;
+  function group(list) {
+    const out = [];
+    let cur = [], len = 0;
+    for (const t of list) {
+      if (cur.length && (len + t.text.length > 1500 || cur.length >= 60)) { out.push(cur); cur = []; len = 0; }
+      cur.push(t); len += t.text.length;
+    }
+    if (cur.length) out.push(cur);
+    return out;
   }
-  if (cur.length) batches.push(cur);
+  const batches = group(todo);
 
   let done = 0, failed = 0;
   const started = Date.now();
@@ -242,12 +251,20 @@ async function main() {
     const cuts = [0];
     for (let i = 1; i < marks.length; i++) cuts.push(findCut(samples, Math.round(marks[i].off / 1e7 * SR), cuts[i - 1]));
     cuts.push(samples.length);
-    return batch.map((_, i) => trim(samples.subarray(cuts[i], Math.min(cuts[i + 1], samples.length))));
+    // Elke grepie met sy woordgrense (sekondes, van die begin van die grepie af)
+    const words = (res.words || []).map((w) => ({ text: w.text, at: Math.round(w.off / 1e7 * SR), len: Math.round(w.dur / 1e7 * SR) }));
+    return batch.map((_, i) => {
+      const clip = trim(samples.subarray(cuts[i], Math.min(cuts[i + 1], samples.length)));
+      if (!clip) return null;
+      const start = (clip.byteOffset - samples.byteOffset) / 2, end = start + clip.length;
+      // ook 'n woord wat 'n fraksie vóór die gesnyde begin begin (die eerste woord van 'n sin)
+      return { clip, words: words.filter((w) => w.at + w.len > start && w.at < end).map((w) => ({ text: w.text, off: Math.max(0, w.at - start) / SR, dur: (w.len - Math.max(0, start - w.at)) / SR })) };
+    });
   }
   async function run(batch) {
-    (await record(batch)).forEach((clip, i) => {
-      if (!clip) { failed++; console.log('  stil:', batch[i].text); return; }
-      encode(clip, path.join(AUDIO, batch[i].h + '.mp3'));
+    (await record(batch)).forEach((r, i) => {
+      if (!r) { failed++; console.log('  stil:', batch[i].text); return; }
+      encode(r.clip, path.join(AUDIO, batch[i].h + '.mp3'));
       done++;
     });
   }
@@ -264,11 +281,46 @@ async function main() {
   for (const t of spliced) {
     const src = await record(SPLICE[t.text].map((text) => ({ text })));
     if (src.some((c) => !c)) { failed++; console.log('  stil:', t.text); continue; }
-    encode(splice(Int16Array.from(src[0]), Int16Array.from(src[1])), path.join(AUDIO, t.h + '.mp3'));
+    encode(splice(Int16Array.from(src[0].clip), Int16Array.from(src[1].clip)), path.join(AUDIO, t.h + '.mp3'));
     done++;
     console.log(`saamgestel: ${t.text} (${SPLICE[t.text].join(' + ')})`);
     await new Promise((r) => setTimeout(r, 3200));
   }
+  /* Sinne met 'n JOIN-woord (bv. "dertien"): neem elke sin twee keer op, met die kop-woord ("dertig") en met
+     die stert-woord ("veertien"), en las by die stil "t" (server/src/join.js, dieselfde as die stembediener). */
+  const takes = new Map();
+  const variants = [];
+  for (const t of joins) {
+    const [w, head, tail] = t.j;
+    variants.push({ text: replaceWord(t.text, w, head), item: t, side: 0 }, { text: replaceWord(t.text, w, tail), item: t, side: 1 });
+  }
+  const vb = group(variants);
+  for (let k = 0; k < vb.length; k++) {
+    const t0 = Date.now();
+    (await record(vb[k])).forEach((r, i) => {
+      const v = vb[k][i];
+      if (!takes.has(v.item)) takes.set(v.item, []);
+      takes.get(v.item)[v.side] = r ? { pcm: Int16Array.from(r.clip), words: r.words } : null;
+    });
+    console.log(`saamlas-groep ${k + 1}/${vb.length}`);
+    const wait = 3200 - (Date.now() - t0);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  }
+  let joined = 0;
+  for (const t of joins) {
+    let [A, B] = takes.get(t) || [];
+    let pcm = A && B ? joinTakes(A, B, t.j[1], t.j[2]) : null;
+    if (!pcm) { // nog 'n keer, elke weergawe apart (sonder punt aan die einde loop die groep se sinne in mekaar)
+      const one = async (text) => { const r = (await record([{ text }]))[0]; await new Promise((x) => setTimeout(x, 3200)); return r && { pcm: Int16Array.from(r.clip), words: r.words }; };
+      A = await one(replaceWord(t.text, t.j[0], t.j[1])); B = await one(replaceWord(t.text, t.j[0], t.j[2]));
+      pcm = A && B ? joinTakes(A, B, t.j[1], t.j[2]) : null;
+    }
+    const clip = pcm && trim(pcm);
+    if (!clip) { failed++; console.log('  kon nie saamlas nie:', t.text); continue; }
+    encode(clip, path.join(AUDIO, t.h + '.mp3'));
+    done++; joined++;
+  }
+  if (joins.length) console.log(`saamgelas: ${joined} van ${joins.length} sinne`);
   console.log('Klaar:', writeManifest(pieces));
 }
 

@@ -9,7 +9,8 @@
     '<span class="ver"> · Weergawe ' + W.VERSION + '</span></p>';
   var DISCLAIMER = 'Hierdie app is gratis en is nie geaffilieer met die Departement van Basiese Onderwys nie. ' +
     'Privaatheid: geen advertensies en geen aanmelding nie, en die app samel self niks in nie. Vordering bly net op hierdie toestel. ' +
-    'Net ’n nota wat jy self stuur (“Help om die app te verbeter”), gaan na ons toe, sonder jou kind se naam.';
+    'Net ’n nota wat jy self stuur (“Help om die app te verbeter”), gaan na ons toe, sonder jou kind se naam. ' +
+    'Sinne wat nie in die app ingebou is nie (bv. storiesomme), kry die app die eerste keer by ons stembediener: dan gaan net daardie sin se teks soontoe.';
   var esc = U.esc;
 
   function render(html, cls) {
@@ -177,7 +178,8 @@
   function nextQuestion() {
     if (sess.i >= sess.items.length) return finish();
     var it = sess.items[sess.i];
-    sess.q = genQuestion(it);
+    sess.q = it.q || genQuestion(it); // dalk reeds vooruit gemaak (sien hieronder)
+    delete it.q;
     sess.attempts = 0;
     sess.locked = false;
     sess.helped = false;
@@ -185,6 +187,9 @@
     sess.ev = {};       // bewys per vaardigheid vir hierdie vraag (hoogstens een keer)
     sess.hintSay = [];
     renderQuestion();
+    // Maak die volgende vraag solank, sodat die stembediener sy sinne kan klaarmaak terwyl die kind hierdie een doen
+    var nx = sess.items[sess.i + 1];
+    if (nx && !nx.q) { nx.q = genQuestion(nx); W.Voice.prefetch([nx.q.say || nx.q.prompt, nx.q.hint, nx.q.done]); }
   }
   function dots() {
     return sess.items.map(function (it, i) {
@@ -204,6 +209,7 @@
       '<div class="answer" id="answer"></div>' +
       '</div><div class="feedback" id="fb"></div>', 'bg-play');
     renderInput();
+    W.Voice.prefetch([q.say || q.prompt, q.hint, q.done]); // stories ens. van die stembediener, solank
     if (S.settings().autoSpeak) setTimeout(speakQ, 250);
   }
   function speakQ() { if (sess && sess.q && !sess.locked && !document.querySelector('.tutor-ov')) W.Voice.speak(sess.q.say || sess.q.prompt); }
@@ -441,6 +447,7 @@
     var vinfo = W.Voice.info();
     var voiceTxt = W.Voice.recorded() ?
       'Stem: <b>Adri</b>, ’n Afrikaanse rekenaarstem (Microsoft Azure), ingebou in die app. Dit werk op enige foon of rekenaar. ' +
+      'Sommige sinne (bv. storiesomme) kom die eerste keer van ons stembediener af; sonder internet stel die app dié uit stukkies saam. ' +
       '<button class="btn small" data-act="testVoice">Toets</button><br>' +
       '<button class="btn small" data-act="voiceDownload">Laai die stem af vir vanlyn gebruik' + (vinfo && vinfo.mb ? ' (' + vinfo.mb + ' MB)' : '') + '</button>' :
       W.Say.available() ? 'Afrikaanse stem op hierdie toestel: <b>' + esc(W.Say.voiceName()) + '</b> <button class="btn small" data-act="testVoice">Toets</button>' :
@@ -707,6 +714,7 @@
 
   // Begin
   W.Voice.load();
+  W.Voice.wake();
   if (S.current()) showHome(); else showProfiles();
 
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
