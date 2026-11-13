@@ -87,11 +87,11 @@ if (fs.existsSync(manPath)) {
   // Soos W.Voice.speak: die hele sin as dit opgeneem is, anders die stukkies
   const say = (t, lesson) => {
     for (const s of W.AF.sentences(t || '')) {
-      if (have.has(W.AF.hash(s.say))) { spoken++; if (lesson && TOK.test(s.raw)) { lessonSents++; lessonWhole++; } continue; }
+      if (have.has(W.AF.clip(s.say))) { spoken++; if (lesson && TOK.test(s.raw)) { lessonSents++; lessonWhole++; } continue; }
       if (lesson && TOK.test(s.raw)) lessonSents++;
       for (const p of W.AF.segments(s.raw)) {
         spoken++;
-        if (!have.has(W.AF.hash(p))) missing.set(p, (missing.get(p) || 0) + 1);
+        if (!have.has(W.AF.clip(p))) missing.set(p, (missing.get(p) || 0) + 1);
       }
     }
   };

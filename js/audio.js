@@ -140,9 +140,9 @@ W.Voice = (function () {
     var pieces = [], hs = [], whole = [];
     texts.forEach(function (t) {
       W.AF.sentences(t).forEach(function (s) {
-        var h = W.AF.hash(s.say);
+        var h = W.AF.clip(s.say);
         if (manifest && manifest[h]) { pieces.push(s.say); hs.push(h); whole.push(true); return; }
-        W.AF.segments(s.raw).forEach(function (p) { pieces.push(p); hs.push(W.AF.hash(p)); whole.push(false); });
+        W.AF.segments(s.raw).forEach(function (p) { pieces.push(p); hs.push(W.AF.clip(p)); whole.push(false); });
       });
     });
     if (!pieces.length) return Promise.resolve();

@@ -83,6 +83,11 @@ text-to-speech of their own.
 - **Pieces** for everything else: spoken text is split into reusable sentences, names and numbers
   (`W.AF.segments`). This covers the stories (word problems and shop sums), whose 20 names ×
   things × numbers would be more than 20,000 sentences.
+- **Joined numbers:** the voice says "dertien" and "negentien" badly on their own. So
+  `tools/build-audio.js` builds them from two other recordings, joined at the silent "t"
+  ("der" from *dertig* + "tien" from *veertien*; "neën" from *neëntien* + "tien" from *sewentien*,
+  chosen by ear). See `SPLICE` there and `RETAKE` in `js/af.js`. A re-done clip must get a new file
+  name (`RETAKE`), because phones keep clips in their cache for good.
 - Each sentence or piece is recorded once as `audio/<hash>.mp3`, about 8,200 clips in all.
   `W.Voice` in `js/audio.js` plays the whole sentence if it exists, and the pieces otherwise.
 - Clips download as they're needed and are kept on the phone for offline use. The parents' section

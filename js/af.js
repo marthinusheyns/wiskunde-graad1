@@ -201,11 +201,16 @@ W.AF = (function () {
     for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); }
     return ('0000000' + (h >>> 0).toString(16)).slice(-8);
   }
+  /* Die lêernaam van 'n opname. 'n Opname wat oorgedoen is, kry 'n nuwe naam, want fone hou grepies
+     vir altyd in hul kas (sw.js). Die stem sê "dertien" en "negentien" alleen swak; tools/build-audio.js
+     stel dié saam uit dele van ander getalle (SPLICE daar). */
+  var RETAKE = { 'dertien': 2, 'negentien': 2 };
+  function clip(s) { return hash(RETAKE[s] ? s + '#' + RETAKE[s] : s); }
 
   return {
     numWord: numWord, ordinal: ordinal, THINGS: THINGS, COUNTABLE: COUNTABLE, ANIMALS: ANIMALS,
     FRUIT: FRUIT, VEHICLES: VEHICLES, thing: thing, count: count, ROW_ANIMALS: ROW_ANIMALS,
     NAMES: NAMES, DAYS: DAYS, MONTHS: MONTHS, COLOURS: COLOURS, PRAISE: PRAISE, TRY_AGAIN: TRY_AGAIN,
-    cap: cap, speakable: speakable, PHRASES: PHRASES, colourHint: colourHint, segments: segments, sentences: sentences, hash: hash
+    cap: cap, speakable: speakable, PHRASES: PHRASES, colourHint: colourHint, segments: segments, sentences: sentences, hash: hash, clip: clip
   };
 })();

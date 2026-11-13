@@ -25,6 +25,14 @@ const args = process.argv.slice(2);
 const LIMIT = args.includes('--limit') ? Number(args[args.indexOf('--limit') + 1]) : Infinity;
 const DRY = args.includes('--dry');
 
+/* Woorde wat die stem alleen swak sê, word saamgestel uit twee ander opnames, aanmekaar gelas by die stil
+   "t" in die middel (die gebruiker het dit op die oor gekies, 2026-11-13). [kop, stert]: die kop-woord tot by
+   sy "t", en die stert-woord vanaf sy "t". Sulke woorde kry 'n nuwe lêernaam via RETAKE in js/af.js. */
+const SPLICE = {
+  'dertien': ['dertig', 'veertien'],      // "der" van dertig + "tien" van veertien
+  'negentien': ['neëntien', 'sewentien']  // "neën" van neëntien + "tien" van sewentien
+};
+
 /* ---------- 1. Versamel teks ---------- */
 function loadApp() {
   const ctx = { console, Math, JSON };
@@ -40,7 +48,7 @@ function collectPieces(W) {
   const pieces = new Map(); // hash -> text
   const add = (t) => {
     for (const p of W.AF.segments(t)) {
-      const h = W.AF.hash(p);
+      const h = W.AF.clip(p);
       if (pieces.has(h) && pieces.get(h) !== p) throw new Error(`Hash-botsing: "${p}" en "${pieces.get(h)}"`);
       pieces.set(h, p);
     }
@@ -66,7 +74,7 @@ function collectPieces(W) {
     add(t);
     for (const s of W.AF.sentences(t)) {
       if (!TOK.test(s.raw)) continue; // sonder getalle of name is die sin reeds een stukkie
-      const h = W.AF.hash(s.say);
+      const h = W.AF.clip(s.say);
       if (pieces.has(h) && pieces.get(h) !== s.say) throw new Error(`Hash-botsing: "${s.say}" en "${pieces.get(h)}"`);
       pieces.set(h, s.say);
       whole.add(h);
@@ -149,6 +157,24 @@ function findCut(samples, approx, prevCut) {
   runs.sort((a, b) => Math.abs((a[0] + a[1]) / 2 - target) - Math.abs((b[0] + b[1]) / 2 - target));
   return Math.floor((runs[0][0] + runs[0][1]) / 2);
 }
+/* Die stilste 40 ms in die middel van 'n woord: die "t" se sluiting. Gee die middel daarvan. */
+function closure(s, from = 0.25, to = 0.8) {
+  const F = Math.round(0.005 * SR), win = 8, env = [];
+  let best = -1, bestE = Infinity;
+  for (let i = 0; i + F <= s.length; i += F) { let e = 0; for (let j = i; j < i + F; j++) e += Math.abs(s[j]); env.push(e / F); }
+  for (let k = Math.floor(env.length * from); k + win < env.length * to; k++) {
+    let e = 0; for (let j = k; j < k + win; j++) e += env[j];
+    if (e < bestE) { bestE = e; best = k; }
+  }
+  return (best + win / 2) * F;
+}
+function splice(head, tail) {
+  const a = head.slice(0, closure(head)), b = tail.slice(closure(tail)), f = Math.round(0.004 * SR);
+  for (let i = 0; i < f; i++) { a[a.length - 1 - i] = Math.round(a[a.length - 1 - i] * i / f); b[i] = Math.round(b[i] * i / f); }
+  const out = new Int16Array(a.length + b.length);
+  out.set(a); out.set(b, a.length);
+  return out;
+}
 function encode(samples, file) {
   const buf = Buffer.from(samples.buffer, samples.byteOffset, samples.byteLength);
   const r = spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-f', 's16le', '-ar', String(SR), '-ac', '1', '-i', 'pipe:0',
@@ -169,10 +195,11 @@ async function main() {
   const W = loadApp();
   const pieces = collectPieces(W);
   fs.mkdirSync(AUDIO, { recursive: true });
-  const todo = [...pieces].filter(([h]) => !fs.existsSync(path.join(AUDIO, h + '.mp3'))).map(([h, text]) => ({ h, text })).slice(0, LIMIT);
+  const all = [...pieces].filter(([h]) => !fs.existsSync(path.join(AUDIO, h + '.mp3'))).map(([h, text]) => ({ h, text })).slice(0, LIMIT);
+  const todo = all.filter((t) => !SPLICE[t.text]), spliced = all.filter((t) => SPLICE[t.text]);
   const chars = todo.reduce((n, t) => n + t.text.length, 0);
-  console.log(`Nog op te neem: ${todo.length} stukkies, ${chars} karakters`);
-  if (DRY || !todo.length) { console.log(writeManifest(pieces)); return; }
+  console.log(`Nog op te neem: ${todo.length} stukkies, ${chars} karakters` + (spliced.length ? `; saam te stel: ${spliced.map((t) => t.text).join(', ')}` : ''));
+  if (DRY || !all.length) { console.log(writeManifest(pieces)); return; }
 
   const key = process.env.AZURE_SPEECH_KEY, region = process.env.AZURE_SPEECH_REGION;
   if (!key || !region) throw new Error('Stel AZURE_SPEECH_KEY en AZURE_SPEECH_REGION');
@@ -191,7 +218,8 @@ async function main() {
 
   let done = 0, failed = 0;
   const started = Date.now();
-  async function run(batch, depth) {
+  /* Neem 'n groep op en gee die grepies terug (in die geheue). */
+  async function record(batch) {
     let res;
     for (let attempt = 0; ; attempt++) {
       try { res = await synth(sdk, cfg, batch); break; } catch (e) {
@@ -208,29 +236,38 @@ async function main() {
       else {
         console.log(`  ${marks.length}/${batch.length} boekmerke; verdeel die groep`);
         const mid = Math.ceil(batch.length / 2);
-        await run(batch.slice(0, mid), depth + 1); await run(batch.slice(mid), depth + 1);
-        return;
+        return (await record(batch.slice(0, mid))).concat(await record(batch.slice(mid)));
       }
     }
     const cuts = [0];
     for (let i = 1; i < marks.length; i++) cuts.push(findCut(samples, Math.round(marks[i].off / 1e7 * SR), cuts[i - 1]));
     cuts.push(samples.length);
-    for (let i = 0; i < batch.length; i++) {
-      const a = cuts[i], b = cuts[i + 1];
-      const clip = trim(samples.subarray(a, Math.min(b, samples.length)));
-      if (!clip) { failed++; console.log('  stil:', batch[i].text); continue; }
+    return batch.map((_, i) => trim(samples.subarray(cuts[i], Math.min(cuts[i + 1], samples.length))));
+  }
+  async function run(batch) {
+    (await record(batch)).forEach((clip, i) => {
+      if (!clip) { failed++; console.log('  stil:', batch[i].text); return; }
       encode(clip, path.join(AUDIO, batch[i].h + '.mp3'));
       done++;
-    }
+    });
   }
   for (let k = 0; k < batches.length; k++) {
     const t0 = Date.now();
-    await run(batches[k], 0);
+    await run(batches[k]);
     const m = writeManifest(pieces);
     const mins = ((Date.now() - started) / 60000).toFixed(1);
     console.log(`groep ${k + 1}/${batches.length}: ${done} klaar, ${failed} misluk, ${m.count} lêers (${m.mb} MB), ${mins} min`);
     const wait = 3200 - (Date.now() - t0); // gratis vlak: hoogstens 20 versoeke per minuut
     if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  }
+  // Saamgestelde woorde: neem die twee bronwoorde op en las hulle by die stil "t" aanmekaar
+  for (const t of spliced) {
+    const src = await record(SPLICE[t.text].map((text) => ({ text })));
+    if (src.some((c) => !c)) { failed++; console.log('  stil:', t.text); continue; }
+    encode(splice(Int16Array.from(src[0]), Int16Array.from(src[1])), path.join(AUDIO, t.h + '.mp3'));
+    done++;
+    console.log(`saamgestel: ${t.text} (${SPLICE[t.text].join(' + ')})`);
+    await new Promise((r) => setTimeout(r, 3200));
   }
   console.log('Klaar:', writeManifest(pieces));
 }
