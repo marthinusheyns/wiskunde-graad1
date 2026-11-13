@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="af">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vraag-galery (ontwikkelaars)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>
+    body { background: #eceff1; }
+    .card { background: #fffaf0; border-radius: 16px; margin: 14px auto; max-width: 860px; padding: 10px 14px 18px; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+    .card h3 { margin: 0; font-size: 14px; color: #607d8b; font-family: monospace; }
+    .ans { font-size: 13px; color: #2e7d32; font-family: monospace; text-align: center; }
+  </style>
+</head>
+<body>
+  <p style="text-align:center">Een voorbeeld van elke vraagtipe. Herlaai vir nuwe voorbeelde. Filter: <code>?g=add,sub</code> of <code>?ws=45</code></p>
+  <div id="out"></div>
+  <script src="../js/util.js"></script>
+  <script src="../js/af.js"></script>
+  <script src="../js/visuals.js"></script>
+  <script src="../js/gen-number.js"></script>
+  <script src="../js/gen-ops.js"></script>
+  <script src="../js/gen-measure.js"></script>
+  <script src="../js/gen-space.js"></script>
+  <script src="../js/gen-money-data.js"></script>
+  <script src="../js/curriculum.js"></script>
+  <script>
+    var qs = new URLSearchParams(location.search), only = qs.get('g'), wsF = qs.get('ws');
+    var specs = [], seen = {};
+    W.CURRICULUM.forEach(function (w) {
+      if (wsF && w.id !== wsF) return;
+      w.ex.forEach(function (e) {
+        if (only && only.split(',').indexOf(e[0]) < 0) return;
+        if (!wsF && seen[e[0]]) return;
+        seen[e[0]] = 1; specs.push({ ws: w, gen: e[0], p: e[1] });
+      });
+    });
+    document.getElementById('out').innerHTML = specs.map(function (s) {
+      var q = W.G[s.gen](s.p), inp = q.input, a = '';
+      if (inp.kind === 'choice') a = '<div class="choices ' + (inp.layout || 'nums') + '">' + inp.options.map(function (o) {
+        var right = String(o.value) === String(inp.answer);
+        return '<button class="ch' + (right ? ' right' : '') + '">' + (o.html != null ? o.html : W.U.esc(o.label)) + '</button>';
+      }).join('') + '</div>';
+      else if (inp.kind === 'colour') a = '<div class="colgrid">' + W.U.range(1, inp.total).map(function (i) { return '<span class="cshape">' + W.V.shape(inp.shape, { fill: i <= inp.target ? inp.colour : '#fff', size: 46 }) + '</span>'; }).join('') + '</div>';
+      else if (inp.kind === 'order') a = '<div class="pool">' + inp.items.map(function (x) { return '<span class="ptile" style="display:flex;align-items:center;justify-content:center">' + W.U.esc(x.label) + '</span>'; }).join('') + '</div>';
+      else if (inp.kind === 'number') a = '<div class="display">' + (inp.prefix || '') + '?</div>';
+      else a = '<div class="display">' + inp.kind + ': ' + inp.text + '</div>';
+      return '<div class="card"><h3>' + s.gen + ' · werkblad ' + s.ws.id + ' · ' + q.skill + '</h3>' +
+        '<div class="prompt">' + W.U.esc(q.prompt) + '</div>' + (q.visual ? '<div class="visual">' + q.visual + '</div>' : '') +
+        '<div class="answer">' + a + '</div><div class="ans">antwoord: ' + W.U.esc(JSON.stringify(inp.answer)) + ' · wenk: ' + W.U.esc(q.hint || '') + ' · ' + W.U.esc(q.explain) + '</div></div>';
+    }).join('');
+  </script>
+</body>
+</html>
