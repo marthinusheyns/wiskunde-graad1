@@ -26,8 +26,9 @@ often as needed.
   Design: [docs/TUTOR-DESIGN.md](docs/TUTOR-DESIGN.md). Teacher review:
   [docs/SKILL-MAP.md](docs/SKILL-MAP.md) (regenerate with `node tools/skillmap-doc.js`).
 - **"Speel volgende"**: suggests the next worksheet that isn't mastered yet.
-- **Hersiening**: a mixed review of worksheets already played, weighted toward low stars and
-  worksheets not played for a while.
+- **Hersiening**: a mixed review of what the child can already do. It only uses worksheets played
+  to the end with at least 2 stars (70% right on the first try), and those not played for a while
+  come up more often. Worksheets with 1 star stay out; the parents' section lists them to play again.
 - **Ouerhoek** (parents' section, behind a simple times-table question): progress per term,
   accuracy per skill (flags "Oefen nog" under 70%), the list of worksheets to redo, settings, and
   player management.

@@ -372,17 +372,24 @@
   }
 
   /* ============ Hersiening ============ */
+  /* Hersiening hou vas wat die kind reeds kan: net werkblaaie wat klaar gespeel is met minstens 2 sterre
+     (70% reg met die eerste probeerslag). Werkblaaie wat lank laas gespeel is, kom meer gereeld (gespreide
+     herhaling). Werkblaaie met 1 ster bly uit; dié speel 'n mens weer self (die ouerhoek wys watter). */
   function startReview() {
     var d = S.data(), played = CUR.filter(function (w) { return d.ws[w.id]; });
-    if (!played.length) {
-      render('<div class="page center"><h1>Hersiening</h1><p class="lead">Speel eers ’n paar werkblaaie. Dan maak ons vir jou ’n gemengde oefening van wat jy al gedoen het.</p>' +
+    var good = played.filter(function (w) { return d.ws[w.id].best >= 2; });
+    if (!good.length) {
+      render('<div class="page center"><h1>Hersiening</h1><p class="lead">' + (played.length ?
+        'Hier oefen ons wat jy al goed kan. Kry eers 2 of 3 sterre op ’n werkblad, dan kom dit in die hersiening.' :
+        'Speel eers ’n paar werkblaaie. Dan maak ons vir jou ’n gemengde oefening van wat jy al goed kan.') + '</p>' +
         '<button class="btn big go" data-act="home">🏠 Tuis</button></div>', 'bg-home');
       return;
     }
+    played = good;
     var now = Date.now();
     var weights = played.map(function (w) {
-      var info = d.ws[w.id], days = Math.min(14, (now - info.last) / 864e5);
-      return 1 + (3 - info.best) * 2 + days / 3;
+      var info = d.ws[w.id], days = Math.min(21, (now - info.last) / 864e5);
+      return 1 + days / 3 + (info.best === 2 ? 1 : 0);
     });
     var sum = weights.reduce(function (a, b) { return a + b; }, 0);
     var items = [];
