@@ -1,5 +1,7 @@
 # Wiskunde Graad 1 — practice app
 
+Sponsored by [Heynstech](https://www.heynstech.com/).
+
 An Afrikaans maths practice app for Grade 1 learners. It follows the DBE Rainbow Workbooks
 *Wiskunde in Afrikaans, Graad 1*:
 

@@ -5,6 +5,7 @@
   var AVATARS = ['🦁', '🐯', '🐼', '🐨', '🐸', '🦄', '🐙', '🦊', '🐰', '🐻', '🐵', '🐧', '🦒', '🐢', '🐞', '🦋'];
   var TERM_COL = { 1: '#e53935', 2: '#fb8c00', 3: '#43a047', 4: '#1e88e5' };
   var sess = null, timer = null;
+  var SPONSOR = '<p class="sponsor">Geborg deur <a href="https://www.heynstech.com/" target="_blank" rel="noopener">Heynstech</a></p>';
   var DISCLAIMER = 'Hierdie app is gratis en is nie geaffilieer met die Departement van Basiese Onderwys nie. ' +
     'Privaatheid: die app samel geen inligting in nie: geen advertensies en geen aanmelding nie. Vordering bly net op hierdie toestel.';
   var esc = U.esc;
@@ -36,7 +37,7 @@
           '<small>' + S.totalStars(p.id) + ' ★</small></button>';
       }).join('') +
       '<button class="person add" data-act="newProfile"><span class="av">＋</span><span>Nuwe speler</span></button></div>' +
-      strip() + '</div>', 'bg-home');
+      strip() + SPONSOR + '</div>', 'bg-home');
   }
   function showNewProfile(first) {
     render('<div class="page center">' +
@@ -47,7 +48,7 @@
       '<h2>Kies jou prentjie</h2>' +
       '<div class="avatars">' + AVATARS.map(function (a, i) { return '<button class="avpick' + (i === 0 ? ' on' : '') + '" data-act="av" data-a="' + a + '">' + a + '</button>'; }).join('') + '</div>' +
       '<button class="btn big go" data-act="saveProfile">Klaar ✓</button>' +
-      (first ? '<p class="note fine">' + DISCLAIMER + '</p>' : '<button class="btn ghost" data-act="profiles">Terug</button>') +
+      (first ? '<p class="note fine">' + DISCLAIMER + '</p>' + SPONSOR : '<button class="btn ghost" data-act="profiles">Terug</button>') +
       '</div>', 'bg-home');
     var inp = document.getElementById('pname');
     inp.focus();
@@ -93,7 +94,7 @@
       '<span class="nb">' + nx.id + '</span><span class="nt"><small>Speel volgende</small>' + esc(nx.title) + '</span><span class="play">▶</span></button>' +
       '<div class="books">' + bookCard(1, b1, '1 & 2') + bookCard(2, b2, '3 & 4') + '</div>' +
       '<button class="btn wide review" data-act="review">🔁 Hersiening: oefen gemengde vrae</button>' +
-      strip() + '</div>', 'bg-home');
+      strip() + SPONSOR + '</div>', 'bg-home');
   }
 
   /* ============ Boek ============ */
@@ -397,7 +398,7 @@
       '<section><h2>Oor hierdie app</h2><p class="note">Gebou rondom die DBO se Reënboog-werkboeke <i>Wiskunde in Afrikaans, Graad 1</i>: Boek 1 (Kwartaal 1 en 2, werkblaaie 1 – 64) en Boek 2 (Kwartaal 3 en 4, werkblaaie 65 – 128). ' +
       'Elke werkblad in die app het dieselfde nommer as in die boek en oefen dieselfde vaardighede met nuwe vrae elke keer. Drie sterre beteken die kind het 90% of meer met die eerste probeerslag reg gehad. ' +
       'Verkeerde antwoorde kry eers ’n wenk; ná ’n tweede fout wys die app die antwoord en kom later met ’n soortgelyke vraag terug. Vordering word net op hierdie toestel gestoor.</p>' +
-      '<p class="note">' + DISCLAIMER + '</p></section>' +
+      '<p class="note">' + DISCLAIMER + '</p>' + SPONSOR + '</section>' +
       '</div>', 'bg-book');
     document.getElementById('qc').addEventListener('change', function (e) { S.setSetting('qCount', +e.target.value); });
     document.getElementById('as').addEventListener('change', function (e) { S.setSetting('autoSpeak', e.target.checked); });
