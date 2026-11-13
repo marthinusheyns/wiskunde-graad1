@@ -299,6 +299,7 @@ W.G = W.G || {};
     }
     var r = rnd(1, s - 1), total = g * s + r;
     if (total > max) { g = Math.max(1, g - 1); total = g * s + r; }
+    var whole = total + ' is ' + g + (g === 1 ? ' groep' : ' groepe') + ' van ' + s + ' en ' + r + ' bly oor.';
     return {
       skill: 'groepe',
       data: { v: 2, g: g, s: s, e: t.e, r: r, ans: r },
@@ -306,7 +307,8 @@ W.G = W.G || {};
       visual: V.objs(t.e, total, { layout: 'scatter', size: total > 12 ? 'sm' : 'md' }),
       input: numInput(r, { mode: 'choice' }, { min: 0, max: s }),
       hint: 'Hoeveel groepe van ' + s + ' pas in ' + total + '? Wat is oor?',
-      explain: total + ' is ' + g + ' groepe van ' + s + ' en ' + r + ' bly oor.'
+      explain: whole,
+      done: whole // ná 'n regte antwoord: die hele prentjie
     };
   };
 
@@ -352,7 +354,9 @@ W.G = W.G || {};
       visual: '<div class="kids">' + kids + '</div>' + V.objs(t.e, total, { layout: 'scatter', size: total > 12 ? 'sm' : 'md' }),
       input: numInput(askRem ? rem : each, { mode: 'choice' }, { min: 0, max: Math.max(6, each + 3) }),
       hint: 'Gee vir elke kind een ' + t.s + ' op ’n slag, totdat jy nie meer gelykop kan gee nie.',
-      explain: 'Elke kind kry ' + each + (rem ? ' en ' + rem + ' bly oor.' : '. Niks bly oor nie.')
+      explain: 'Elke kind kry ' + each + (rem ? ' en ' + rem + ' bly oor.' : '. Niks bly oor nie.'),
+      // Ná 'n regte antwoord: die hele prentjie, sodat die kind ook hoor wat oorbly (bv. 9 tussen 5: elkeen 1, en 4 bly oor)
+      done: rem ? 'Elke kind kry ' + each + ' en ' + rem + ' bly oor.' : null
     };
   };
 })(W.G);

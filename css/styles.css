@@ -279,6 +279,7 @@ table.grid td { width: 54px; height: 54px; border: 2px solid #b0bec5; text-align
 .fbin { max-width: 860px; margin: 0 auto; padding: 18px 20px; font-size: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; justify-content: center; text-align: center; }
 .feedback.good { background: #c8e6c9; color: var(--green-d); font-weight: 700; font-size: 26px; }
 .feedback.good .big { font-size: 36px; }
+.feedback.good .done { display: inline-block; margin-top: 4px; font-size: 20px; font-weight: 600; }
 .feedback.retry { background: #ffe0b2; }
 .feedback.reveal { background: #e3f2fd; }
 .feedback.reveal .btn { margin-left: auto; }

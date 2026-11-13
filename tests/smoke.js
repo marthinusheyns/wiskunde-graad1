@@ -98,6 +98,7 @@ if (fs.existsSync(manPath)) {
   for (const ws of W.CURRICULUM) for (const [gen, params] of ws.ex) for (let i = 0; i < 50; i++) {
     const q = W.G[gen](params);
     [q.say || q.prompt, q.hint, q.explain].forEach((t) => say(t));
+    if (q.done) say(q.done, true); // ná 'n regte antwoord: moet as hele sin opgeneem wees
     Object.values(q.mis || {}).forEach((m) => { say(W.MIS[m].child); say(W.MIS[m].tutor); });
     if (W.LESSONS[gen] && i % 5 === 0) W.LESSONS[gen](q).forEach((f) => say(f.say, !(STORY.has(gen) && f.say === (q.say || q.prompt))));
   }

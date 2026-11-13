@@ -206,7 +206,7 @@
     renderInput();
     if (S.settings().autoSpeak) setTimeout(speakQ, 250);
   }
-  function speakQ() { if (sess && sess.q && !document.querySelector('.tutor-ov')) W.Voice.speak(sess.q.say || sess.q.prompt); }
+  function speakQ() { if (sess && sess.q && !sess.locked && !document.querySelector('.tutor-ov')) W.Voice.speak(sess.q.say || sess.q.prompt); }
 
   function renderInput() {
     var q = sess.q, inp = q.input, el = document.getElementById('answer');
@@ -287,9 +287,17 @@
       it.state = alone ? 'good' : 'help';
       W.Sfx.good();
       var pr = U.pick(AF.PRAISE);
-      feedback('good', '<span class="big">✓</span> ' + pr);
-      W.Voice.speak(pr);
-      timer = setTimeout(advance, 1300);
+      feedback('good', '<span class="big">✓</span> ' + pr + (q.done ? '<br><span class="done">' + esc(q.done) + '</span>' : ''));
+      if (q.done) {
+        // Die hele prentjie ná 'n regte antwoord (bv. "Elke kind kry 1 en 4 bly oor."); gaan aan as die stem klaar is
+        var tok = sess.fbTok, t0 = Date.now();
+        W.Voice.speak([pr, q.done]).then(function () {
+          if (sess && sess.q === q && sess.fbTok === tok) timer = setTimeout(advance, Math.max(700, 1300 - (Date.now() - t0)));
+        });
+      } else {
+        W.Voice.speak(pr);
+        timer = setTimeout(advance, 1300);
+      }
       return;
     }
     sess.attempts++;

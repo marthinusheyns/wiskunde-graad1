@@ -84,6 +84,7 @@ function collectPieces(W) {
         (lesson && !STORY.has(g) ? addWhole : add)(prompt);
         if (q.hint) add(q.hint);
         add(q.explain);
+        if (q.done) addWhole(q.done); // die hele prentjie ná 'n regte antwoord
         const inp = q.input;
         if (inp.kind === 'choice' && inp.layout === 'words' && inp.speakOptions !== false) inp.options.forEach((o) => add(String(o.label)));
         if (!lesson) continue;
