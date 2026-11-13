@@ -123,14 +123,14 @@ W.AF = (function () {
     results3: 'Fantasties! Jy het dit bemeester!',
     results2: 'Baie goed gedoen!',
     results1: 'Goed geoefen! Probeer weer vir meer sterre.',
-    test: 'Hallo! Kom ons oefen wiskunde. Een, twee, drie, vier, vyf.',
+    test: 'Haai, kom ons oefen wiskunde! Een, twee, drie, vier, vyf.',
     traceAll: 'Trek oor die hele getal, van bo tot onder.',
     traceInside: 'Bly binne die grys lyne.',
     traceFirst: 'Trek eers met jou vinger oor die grys getal.',
     colourLess: 'Tik op ’n gekleurde vorm om dit weer wit te maak.',
     showme: 'Kyk hoe ek ’n soortgelyke een doen. Dan probeer jy.',
     yourTurn: 'Nou probeer jy!',
-    learn: 'Hallo! Ek is Juffrou Padda. Kom ons leer saam.'
+    learn: 'Haai, ek is Juffrou Padda! Kom ons leer saam.' // "Hallo!" alleen klink vreemd; "Haai, ..." gekies op die oor
   };
   function colourHint(n, target) {
     return 'Jy het ' + n + ' ingekleur. Ons soek ' + target + '. ' + (n > target ? PHRASES.colourLess : 'Kleur nog ' + (target - n) + ' in.');
