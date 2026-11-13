@@ -96,7 +96,15 @@ The parents' section gets **"Waar sukkel {naam}?"**:
 | `js/store.js` | Per-skill evidence (`nodes`) and mistake counts (`mis`), stored on the device only |
 
 Voice: lesson sentences and hints go through the same recording pipeline (`tools/build-audio.js`
-collects them too). Numbers and names are separate clips, so lessons mostly reuse existing ones.
+collects them too). Since version 1.4, every lesson sentence that contains a number is recorded
+**as a whole sentence, for every number combination the lesson can produce** ("Ons begin by agt.",
+"Ons begin by nege.", …). Stitching the numbers in separately made the sentences sound broken,
+because each piece had its own falling tone. The lessons are still built from the question's own
+numbers; only the recording changed. The same applies to the questions Juffrou Padda reads aloud,
+except the stories (word problems and shop sums): 20 names × things × numbers gives more than
+20,000 sentences, so those are still put together from pieces. `W.Voice.speak` plays the whole
+sentence if it has been recorded, and the pieces otherwise. A new lesson sentence therefore needs
+`node tools/build-audio.js` before it sounds natural.
 
 ## Phases
 

@@ -73,8 +73,10 @@ W.Sfx = (function () {
 })();
 
 /* Ingeboude, opgeneemde stem (Microsoft Azure se Afrikaanse neurale stem "Adri").
-   Elke stukkie teks is een keer opgeneem as audio/<hash>.mp3; die app speel die stukkies agter
-   mekaar. As 'n stukkie ontbreek, gebruik ons die toestel se eie stem as daar een is. */
+   Elke stukkie teks is een keer opgeneem as audio/<hash>.mp3. Juffrou Padda se lessinne (en die
+   vrae wat sy voorlees) is in hul geheel opgeneem, met elke getal daarin; ander sinne stel die app
+   saam uit stukkies (sinne, name en getalle). As 'n stukkie ontbreek, gebruik ons die toestel se
+   eie stem as daar een is. */
 W.Voice = (function () {
   var manifest = null, meta = null, loading = null, ctx = null, cache = {}, gen = 0, sources = [];
 
@@ -134,16 +136,22 @@ W.Voice = (function () {
     texts = [].concat(texts).filter(Boolean);
     stop();
     if (!texts.length) return Promise.resolve();
-    var pieces = [];
-    texts.forEach(function (t) { W.AF.segments(t).forEach(function (p) { pieces.push(p); }); });
+    // Elke sin: die opname van die hele sin as daar een is (natuurlike toon), anders stukkies
+    var pieces = [], hs = [], whole = [];
+    texts.forEach(function (t) {
+      W.AF.sentences(t).forEach(function (s) {
+        var h = W.AF.hash(s.say);
+        if (manifest && manifest[h]) { pieces.push(s.say); hs.push(h); whole.push(true); return; }
+        W.AF.segments(s.raw).forEach(function (p) { pieces.push(p); hs.push(W.AF.hash(p)); whole.push(false); });
+      });
+    });
     if (!pieces.length) return Promise.resolve();
-    var hs = pieces.map(W.AF.hash);
     var missing = !manifest || hs.some(function (h) { return !manifest[h]; });
     if (missing && W.Say.available()) return W.Say.speak(texts.join(' ')) || wait(estimate(texts));
     var c = manifest && ac();
     if (!c) return wait(estimate(texts));
     var my = gen;
-    var items = pieces.map(function (p, i) { return { p: p, h: hs[i] }; }).filter(function (x) { return manifest[x.h]; });
+    var items = pieces.map(function (p, i) { return { p: p, h: hs[i], w: whole[i] }; }).filter(function (x) { return manifest[x.h]; });
     return Promise.all(items.map(function (x) { return getBuf(x.h).catch(function () { return null; }); })).then(function (bufs) {
       if (my !== gen) return;
       var t = c.currentTime + 0.05;
@@ -152,7 +160,7 @@ W.Voice = (function () {
         var s = c.createBufferSource();
         s.buffer = b; s.connect(c.destination); s.start(t);
         sources.push(s);
-        t += b.duration + (/[.!?]$/.test(items[i].p) ? 0.25 : 0.04);
+        t += b.duration + (items[i].w || /[.!?]$/.test(items[i].p) ? 0.25 : 0.04);
       });
       return wait(Math.max(0, (t - c.currentTime) * 1000));
     });

@@ -81,18 +81,28 @@ const manPath = path.join(__dirname, '..', 'audio', 'manifest.json');
 if (fs.existsSync(manPath)) {
   const have = new Set(JSON.parse(fs.readFileSync(manPath, 'utf8')).clips);
   const missing = new Map();
-  let spoken = 0;
+  let spoken = 0, lessonSents = 0, lessonWhole = 0;
+  const TOK = new RegExp('\\d|\\b(' + W.AF.NAMES.join('|') + ')\\b');
+  const STORY = new Set(['wordProblem', 'moneyChange']); // stories bly stukkies (te veel name x getalle)
+  // Soos W.Voice.speak: die hele sin as dit opgeneem is, anders die stukkies
+  const say = (t, lesson) => {
+    for (const s of W.AF.sentences(t || '')) {
+      if (have.has(W.AF.hash(s.say))) { spoken++; if (lesson && TOK.test(s.raw)) { lessonSents++; lessonWhole++; } continue; }
+      if (lesson && TOK.test(s.raw)) lessonSents++;
+      for (const p of W.AF.segments(s.raw)) {
+        spoken++;
+        if (!have.has(W.AF.hash(p))) missing.set(p, (missing.get(p) || 0) + 1);
+      }
+    }
+  };
   for (const ws of W.CURRICULUM) for (const [gen, params] of ws.ex) for (let i = 0; i < 50; i++) {
     const q = W.G[gen](params);
-    const texts = [q.say || q.prompt, q.hint, q.explain];
-    Object.values(q.mis || {}).forEach((m) => texts.push(W.MIS[m].child, W.MIS[m].tutor));
-    if (W.LESSONS[gen] && i % 5 === 0) W.LESSONS[gen](q).forEach((f) => texts.push(f.say));
-    for (const t of texts) for (const p of W.AF.segments(t || '')) {
-      spoken++;
-      if (!have.has(W.AF.hash(p))) missing.set(p, (missing.get(p) || 0) + 1);
-    }
+    [q.say || q.prompt, q.hint, q.explain].forEach((t) => say(t));
+    Object.values(q.mis || {}).forEach((m) => { say(W.MIS[m].child); say(W.MIS[m].tutor); });
+    if (W.LESSONS[gen] && i % 5 === 0) W.LESSONS[gen](q).forEach((f) => say(f.say, !(STORY.has(gen) && f.say === (q.say || q.prompt))));
   }
-  console.log(`Stem: ${have.size} opgeneemde stukkies; ${missing.size} ontbreek (${[...missing.values()].reduce((a, b) => a + b, 0)} van ${spoken} stukkies gesê)`);
+  console.log(`Stem: ${have.size} opnames; ${missing.size} stukkies ontbreek (${[...missing.values()].reduce((a, b) => a + b, 0)} van ${spoken} keer gesê)`);
+  console.log(`  Lessinne met getalle: ${lessonWhole} van ${lessonSents} as hele sinne opgeneem`);
   if (missing.size) console.log('  bv.: ' + [...missing.keys()].slice(0, 8).map((s) => JSON.stringify(s)).join(', ') + '\n  Hardloop tools/build-audio.js om dit op te neem.');
 }
 

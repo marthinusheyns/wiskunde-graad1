@@ -58,7 +58,14 @@ It is a static web app with no build step and no dependencies.
   iPhone/iPad it explains Share → Add to Home Screen. The parents' section always has the steps.
   It installs like an app and works offline: `sw.js` caches everything.
 - **Releasing:** bump `W.VERSION` in `js/util.js` and `CACHE` in `sw.js` together. The version is
-  shown in the parents' section and sent with every note, so you know which build a note is about.
+  shown at the bottom of the first screens ("Weergawe 1.4") and in the parents' section, and sent
+  with every note, so you know which build a note is about.
+- **How phones get updates:** with internet, the app always loads the newest files. `sw.js` asks the
+  server each time whether a file has changed, so it never uses an old copy from the browser's
+  cache. Phones often keep the app open in the background for days, so `js/update.js` also checks
+  when the app comes back to the front, and when the home screen is shown. If there is a newer
+  version, it shows a bar: *"Nuwe weergawe … is gereed. Laai dit"*. It doesn't show while a child is
+  busy with a worksheet. Offline, the phone keeps the version it has until it is online again.
 
 Progress is stored in the browser's `localStorage` on that device only.
 
@@ -68,32 +75,46 @@ The app has its own recorded Afrikaans voice: **Adri**, a Microsoft Azure neural
 question works the same on any phone or browser, with no setup. Most phones have no Afrikaans
 text-to-speech of their own.
 
-- Spoken text is split into reusable pieces: sentences, names and numbers (`W.AF.segments`). Each
-  piece is recorded once as `audio/<hash>.mp3`, about 2,100 clips in all. The app plays the pieces
-  one after another (`W.Voice` in `js/audio.js`).
+- **Whole sentences** (since version 1.4): every sentence in Juffrou Padda's lessons that contains a
+  number is recorded whole, for every number combination a lesson can produce. The same goes for
+  the questions she reads aloud (`W.AF.sentences`). That gives a natural tone, with no break at each
+  number. The lessons still use the question's own numbers; only the recording is done in advance.
+- **Pieces** for everything else: spoken text is split into reusable sentences, names and numbers
+  (`W.AF.segments`). This covers the stories (word problems and shop sums), whose 20 names ×
+  things × numbers would be more than 20,000 sentences.
+- Each sentence or piece is recorded once as `audio/<hash>.mp3`, about 8,200 clips in all.
+  `W.Voice` in `js/audio.js` plays the whole sentence if it exists, and the pieces otherwise.
 - Clips download as they're needed and are kept on the phone for offline use. The parents' section
   also has a button to download the whole voice in one go.
 - If a piece is missing (for example after new questions are added), the app uses the device's
   own Afrikaans voice if there is one. Otherwise that phrase is silent.
 
-**Recording or updating the voice** (one-off; fits easily in Azure's free F0 tier of 500,000
-characters a month, and the full set is about 53,000 characters):
+**Recording or updating the voice** (only new text is recorded; Azure's free F0 tier allows 500,000
+characters a month, and the full set is about 255,000 characters, so even a full re-record fits in
+one month):
 
 ```
 cd tools
 npm install
 AZURE_SPEECH_KEY=... AZURE_SPEECH_REGION=southafricanorth node build-audio.js   # only records missing pieces
 AZURE_SPEECH_KEY=... AZURE_SPEECH_REGION=southafricanorth node check-audio.js 50  # speech-to-text spot check
+AZURE_SPEECH_KEY=... AZURE_SPEECH_REGION=southafricanorth node check-audio.js 40 --recent 3  # only clips from the last 3 hours
+node check-audio.js --durations   # flags clips whose length doesn't fit their text
 ```
 
 `node tests/smoke.js` warns if any spoken text has no recording. Never commit the key.
 
 ### Notes from parents ("Help om die app te verbeter")
 
-Parents can send a short note from the parents' section, or with the 💬 button on any question.
-That button sends the worksheet and question with the note. The form asks them not to include
-personal information, warns if the note looks like it contains an email address or phone number,
-and never includes the child's name.
+Parents and teachers can send a short note from the parents' section, or with the 💬 button on any
+question. That button sends the worksheet and question with the note. The form asks them not to
+include personal information, warns if the note looks like it contains an email address or phone
+number, and never includes the child's name.
+
+The form starts with **Ek is: Ouer / Onderwyser / Ander** (required) and an optional
+**Verwysing**: initials or a code you give each teacher (e.g. `J1`, `J2`). Each note then records
+`who` and `ref`, so you can read one teacher's notes together. The phone remembers both for the
+next note.
 
 - Each note is appended as one JSON line to a private file in Azure Storage: account `wiskundenotas`,
   container `notas`, one file per grade (`graad1.jsonl`; later `graad2.jsonl`, `graad3.jsonl`).
@@ -108,7 +129,8 @@ and never includes the child's name.
   data.
 - Offline, notes wait on the phone (at most 20) and go when the internet returns.
 - **Pick them up:** `node tools/notes.js` shows notes that are new since the last run (`--all`
-  shows everything, `--since 2026-11-20` filters by date). It downloads the files to `../notas/`,
+  shows everything, `--since 2026-11-20` filters by date, `--who onderwyser` by sender type,
+  `--ref J1` by reference), with a count per sender at the end. It downloads the files to `../notas/`,
   outside the repo, so they are never published. It needs the az CLI and a git-ignored
   `tools/notes.local.json` with `{ "subscription": "<name or id>" }`.
 
@@ -130,7 +152,8 @@ app/
   js/tutor-lessons.js   Juffrou Padda's lessons (frames of picture + spoken sentence)
   js/tutor.js           lesson player and the parent-report logic (root gaps)
   js/install.js         "Installeer die app?" bar and install steps
-  js/notes.js           "Help om die app te verbeter": note form, offline outbox, append to Azure
+  js/notes.js           "Help om die app te verbeter": note form (parent/teacher + reference), outbox, append to Azure
+  js/update.js          "Nuwe weergawe is gereed" bar when a newer version is online
   js/app.js             screens and the question player
   tests/smoke.js        generates ~100k questions and validates every one
   tests/gallery.html    one sample of every question type, for visual checks
@@ -163,8 +186,9 @@ http) to see one example of every question type. Add `?g=add,sub` or `?ws=45` to
   generated by the app.
 - **Privacy:** the app collects no data by itself. There are no accounts, no ads and no tracking.
   Progress is stored only in the browser on each device. The only thing that leaves the phone is a
-  note a parent chooses to send ("Help om die app te verbeter"). It contains the note, the
-  worksheet and question if sent from one, the app version and the kind of device
+  note a parent or teacher chooses to send ("Help om die app te verbeter"). It contains the note,
+  whether the sender is a parent or a teacher, an optional reference they type (initials or a
+  code), the worksheet and question if sent from one, the app version and the kind of device
   (e.g. "Android 14 · Chrome 131"), but never the child's name.
 - The voice is synthetic (Microsoft Azure neural TTS, voice "Adri"), and the app says so in the
   parents' section.

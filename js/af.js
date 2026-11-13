@@ -152,11 +152,14 @@ W.AF = (function () {
   function cleanPiece(p) {
     return p.replace(/^[\s,;:.\-–]+/, '').replace(/[\s,;:\-–]+$/, '').replace(/\s+/g, ' ').replace(/\s+([.!?])/g, '$1').trim();
   }
-  function segments(text) {
-    // '?' wat los staan is 'n plekhouer ("3 en ? is 5"); '?' wat aan 'n woord vas is, is net 'n vraagteken
-    var out = [], last = 0, m;
-    var s = String(text || '').replace(/\s*\(?\b[23]D\)?/g, '')
+  // '?' wat los staan is 'n plekhouer ("3 en ? is 5"); '?' wat aan 'n woord vas is, is net 'n vraagteken
+  function prep(text) {
+    return String(text || '').replace(/\s*\(?\b[23]D\)?/g, '')
       .replace(/(^|\s)\?(?=\s|$)/g, '$1hoeveel').replace(/hoeveel$/, 'hoeveel?');
+  }
+  function segments(text) {
+    var out = [], last = 0, m;
+    var s = prep(text);
     function pushText(chunk) {
       cleanChunk(chunk).replace(/([.!?])\s+/g, '$1\n').split('\n').forEach(function (p) {
         p = cleanPiece(p);
@@ -175,6 +178,23 @@ W.AF = (function () {
     pushText(s.slice(last));
     return out;
   }
+  /* Hele sinne, vir sinne wat in hul geheel opgeneem is (bv. "Ons begin by agt."). Dan klink die
+     toon reg, sonder 'n breuk by elke getal. raw: die sin soos geskryf (vir segments as daar nie 'n
+     opname van die hele sin is nie); say: die uitgespelde teks wat opgeneem word. 'n Sin sonder
+     getalle of name is presies een stukkie, so dit deel dieselfde opname. */
+  function spell(s) {
+    return s.replace(/\bR\s?(\d+)/g, function (m, d) { return numWord(+d) + ' rand'; })
+      .replace(/(\d+)\s?c\b/g, function (m, d) { return numWord(+d) + ' sent'; })
+      .replace(/\d+/g, function (d) { return numWord(+d); });
+  }
+  function sentences(text) {
+    var out = [];
+    cleanChunk(prep(text)).replace(/([.!?])\s+/g, '$1\n').split('\n').forEach(function (raw) {
+      var say = cleanPiece(spell(raw));
+      if (say && /[a-zA-ZÀ-ſ]/.test(say)) out.push({ raw: raw, say: say });
+    });
+    return out;
+  }
   /* Kort, stabiele lêernaam vir 'n stukkie (FNV-1a, 32 bis). */
   function hash(s) {
     var h = 0x811c9dc5;
@@ -186,6 +206,6 @@ W.AF = (function () {
     numWord: numWord, ordinal: ordinal, THINGS: THINGS, COUNTABLE: COUNTABLE, ANIMALS: ANIMALS,
     FRUIT: FRUIT, VEHICLES: VEHICLES, thing: thing, count: count, ROW_ANIMALS: ROW_ANIMALS,
     NAMES: NAMES, DAYS: DAYS, MONTHS: MONTHS, COLOURS: COLOURS, PRAISE: PRAISE, TRY_AGAIN: TRY_AGAIN,
-    cap: cap, speakable: speakable, PHRASES: PHRASES, colourHint: colourHint, segments: segments, hash: hash
+    cap: cap, speakable: speakable, PHRASES: PHRASES, colourHint: colourHint, segments: segments, sentences: sentences, hash: hash
   };
 })();

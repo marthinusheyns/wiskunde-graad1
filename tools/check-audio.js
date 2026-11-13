@@ -1,6 +1,7 @@
 /* Kontroleer opgeneemde stukkies: stuur 'n steekproef deur Azure se spraak-na-teks (af-ZA)
    en vergelyk wat gehoor word met wat dit moet wees. Vang verkeerd gesnyde klank.
-   Gebruik: AZURE_SPEECH_KEY=... AZURE_SPEECH_REGION=... node check-audio.js [aantal] */
+   Gebruik: AZURE_SPEECH_KEY=... AZURE_SPEECH_REGION=... node check-audio.js [aantal] [--recent uur]
+            node check-audio.js --durations [--fix]   (geen sleutel nodig nie) */
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
@@ -16,7 +17,11 @@ const AF = ctx.W.AF;
 
 const pieces = JSON.parse(fs.readFileSync(path.join(__dirname, 'audio-pieces.json'), 'utf8'));
 const have = JSON.parse(fs.readFileSync(path.join(ROOT, 'audio', 'manifest.json'), 'utf8')).clips;
-const sample = have.slice().sort(() => Math.random() - 0.5).slice(0, N);
+// --recent H: steekproef net uit grepies wat die afgelope H uur opgeneem is (ná 'n nuwe opname)
+const recentAt = process.argv.indexOf('--recent');
+const pool = recentAt < 0 ? have : have.filter((h) =>
+  Date.now() - fs.statSync(path.join(ROOT, 'audio', h + '.mp3')).mtimeMs < Number(process.argv[recentAt + 1] || 24) * 3600e3);
+const sample = pool.slice().sort(() => Math.random() - 0.5).slice(0, N);
 
 const norm = (s) => String(s).toLowerCase()
   .replace(/\d+/g, (d) => ' ' + AF.numWord(+d) + ' ')

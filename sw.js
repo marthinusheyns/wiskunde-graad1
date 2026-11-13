@@ -1,11 +1,11 @@
 /* Diensbode: hou die app vanlyn beskikbaar nadat dit een keer gelaai is. */
-var CACHE = 'wiskunde-gr1-v6';
+var CACHE = 'wiskunde-gr1-v7';
 var AUDIO = 'wiskunde-gr1-audio-v1'; // stemgrepies verander nooit (die naam is 'n hash van die teks)
 var SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/styles.css',
   'js/util.js', 'js/af.js', 'js/visuals.js', 'js/gen-number.js', 'js/gen-ops.js', 'js/gen-measure.js',
   'js/gen-space.js', 'js/gen-money-data.js', 'js/curriculum.js', 'js/tutor-data.js', 'js/tutor-lessons.js',
-  'js/store.js', 'js/audio.js', 'js/trace.js', 'js/tutor.js', 'js/install.js', 'js/notes.js', 'js/app.js',
+  'js/store.js', 'js/audio.js', 'js/trace.js', 'js/tutor.js', 'js/install.js', 'js/notes.js', 'js/update.js', 'js/app.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'
 ];
 
@@ -31,9 +31,12 @@ self.addEventListener('fetch', function (e) {
     }));
     return;
   }
-  // Netwerk eerste vir ons eie lêers (sodat opdaterings deurkom), kas as daar geen netwerk is nie
+  // Netwerk eerste vir ons eie lêers (sodat opdaterings deurkom), kas as daar geen netwerk is nie.
+  // 'no-cache': vra die bediener elke keer of 'n lêer verander het (goedkoop, meestal "304 onveranderd"),
+  // anders kan die blaaier 'n ou lêer tot 10 minute lank uit sy eie kas gee.
+  var fresh = url.origin === location.origin && e.request.mode !== 'navigate' ? fetch(e.request, { cache: 'no-cache' }) : fetch(e.request);
   e.respondWith(
-    fetch(e.request).then(function (res) {
+    fresh.then(function (res) {
       var copy = res.clone();
       caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
       return res;

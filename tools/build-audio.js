@@ -54,25 +54,47 @@ function collectPieces(W) {
   if (W.MIS) Object.values(W.MIS).forEach((m) => { add(m.child); add(m.tutor); });
   ['Kom ons kyk saam hoe om dit te doen.', 'Klaar'].forEach(add);
   for (let n = 0; n <= 20; n++) for (let t = 1; t <= 20; t++) add(W.AF.colourHint(n, t));
+
+  /* Hele sinne vir Juffrou Padda: elke lessin met getalle en elke vraag wat sy voorlees, word in sy
+     geheel opgeneem, sodat die toon natuurlik bly. Die stukkies bly ook (as terugval).
+     Uitsondering: die stories (woordsomme en winkelsomme). Name x dinge x getalle gee meer as
+     20 000 sinne, so dié bly saamgestel uit stukkies. */
+  const STORY = new Set(['wordProblem', 'moneyChange']);
+  const TOK = new RegExp('\\d|\\b(' + W.AF.NAMES.join('|') + ')\\b');
+  const whole = new Set();
+  const addWhole = (t) => {
+    add(t);
+    for (const s of W.AF.sentences(t)) {
+      if (!TOK.test(s.raw)) continue; // sonder getalle of name is die sin reeds een stukkie
+      const h = W.AF.hash(s.say);
+      if (pieces.has(h) && pieces.get(h) !== s.say) throw new Error(`Hash-botsing: "${s.say}" en "${pieces.get(h)}"`);
+      pieces.set(h, s.say);
+      whole.add(h);
+    }
+  };
+
   // Vrae: genereer totdat daar vir 'n lang ruk niks nuuts bykom nie
   let round = 0, quiet = 0, before = 0;
   while (round < 60000 && quiet < 3000) {
     for (const ws of W.CURRICULUM) {
       for (const [g, p] of ws.ex) {
         const q = W.G[g](p);
-        add(q.say || q.prompt);
+        const prompt = q.say || q.prompt;
+        const lesson = W.LESSONS && W.LESSONS[g];
+        (lesson && !STORY.has(g) ? addWhole : add)(prompt);
         if (q.hint) add(q.hint);
         add(q.explain);
         const inp = q.input;
         if (inp.kind === 'choice' && inp.layout === 'words' && inp.speakOptions !== false) inp.options.forEach((o) => add(String(o.label)));
-        if (W.LESSONS && W.LESSONS[g] && round % 3 === 0) W.LESSONS[g](q).forEach((f) => add(f.say));
-        if (W.LESSONS && W.LESSONS[g] && round % 3 === 1) Object.values(q.mis || {}).forEach((m) => W.LESSONS.forMistake(m, g, q).forEach((f) => add(f.say)));
+        if (!lesson) continue;
+        const frames = round % 2 === 0 ? W.LESSONS[g](q) : [].concat(...Object.values(q.mis || {}).map((m) => W.LESSONS.forMistake(m, g, q)));
+        frames.forEach((f) => (STORY.has(g) && f.say === prompt ? add : addWhole)(f.say));
       }
     }
     round++;
     if (pieces.size === before) quiet++; else { quiet = 0; before = pieces.size; }
   }
-  console.log(`Stukkies: ${pieces.size} (ná ${round} rondtes)`);
+  console.log(`Stukkies: ${pieces.size}, waarvan ${whole.size} hele sinne (ná ${round} rondtes)`);
   return pieces;
 }
 

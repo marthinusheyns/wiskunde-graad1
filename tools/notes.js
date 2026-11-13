@@ -3,6 +3,8 @@
    Gebruik (uit die app-gids):  node tools/notes.js            nuwe notas sedert die vorige keer
                                 node tools/notes.js --all      al die notas
                                 node tools/notes.js --since 2026-11-20
+                                node tools/notes.js --all --who onderwyser   (ouer / onderwyser / ander)
+                                node tools/notes.js --all --ref J1           (deel van die verwysing)
 
    Nodig: die az CLI, aangemeld, en tools/notes.local.json (word nie in git gestoor nie), bv.
      { "subscription": "<intekening se naam of id>" }
@@ -27,6 +29,8 @@ const args = process.argv.slice(2);
 const all = args.includes('--all');
 const sinceAt = args.indexOf('--since');
 const since = sinceAt >= 0 ? args[sinceAt + 1] : null;
+const opt = (name) => { const i = args.indexOf(name); return i >= 0 ? String(args[i + 1] || '').toLowerCase() : null; };
+const whoF = opt('--who'), refF = opt('--ref');
 
 function az(cmd) {
   return execSync(`az ${cmd} --account-name ${cfg.account} --subscription "${cfg.subscription}" --auth-mode key --only-show-errors`,
@@ -57,10 +61,13 @@ for (const b of blobs) {
 }
 notes.sort((a, b) => String(a.t).localeCompare(String(b.t)));
 
-const show = notes.filter((n) => (since ? String(n.t) >= since : all || !seen[n.id]));
+const show = notes.filter((n) => (since ? String(n.t) >= since : all || !seen[n.id]))
+  .filter((n) => !whoF || String(n.who || '').toLowerCase() === whoF)
+  .filter((n) => !refF || String(n.ref || '').toLowerCase().includes(refF));
+const from = (n) => (n.who ? clean(n.who) : 'onbekend') + (n.ref ? ` "${clean(n.ref)}"` : '');
 for (const n of show) {
   const q = n.q || {};
-  console.log(`\n── ${clean(n.t).replace('T', ' ').slice(0, 16)} · ${clean(n.app)} v${clean(n.v)} · ${clean(n.dev)}`);
+  console.log(`\n── ${clean(n.t).replace('T', ' ').slice(0, 16)} · ${from(n)} · ${clean(n.app)} v${clean(n.v)} · ${clean(n.dev)}`);
   if (n.q) {
     console.log(`   Werkblad ${clean(q.ws)} ${clean(q.title)} (vraag ${clean(q.n)}, ${clean(q.gen)}${q.review ? ', hersiening' : ''}, ${clean(q.attempts)} keer probeer)`);
     console.log(`   Vraag: “${clean(q.prompt)}”  antwoord: ${clean(JSON.stringify(q.answer))}` +
@@ -70,5 +77,10 @@ for (const n of show) {
 }
 console.log(`\n${show.length} ${since ? 'notas sedert ' + since : all ? 'notas altesaam' : 'nuwe notas'} (${notes.length} altesaam in ${blobs.join(', ') || 'geen lêers'})` +
   (bad ? `, ${bad} ongeldige reëls oorgeslaan` : '') + `. Lêers in ${OUT}`);
+if (show.length) {
+  const per = {};
+  show.forEach((n) => { per[from(n)] = (per[from(n)] || 0) + 1; });
+  console.log('Van: ' + Object.entries(per).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(' · '));
+}
 for (const n of notes) if (n.id) seen[n.id] = 1;
 fs.writeFileSync(seenFile, JSON.stringify(seen));

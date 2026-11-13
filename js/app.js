@@ -5,7 +5,8 @@
   var AVATARS = ['🦁', '🐯', '🐼', '🐨', '🐸', '🦄', '🐙', '🦊', '🐰', '🐻', '🐵', '🐧', '🦒', '🐢', '🐞', '🦋'];
   var TERM_COL = { 1: '#e53935', 2: '#fb8c00', 3: '#43a047', 4: '#1e88e5' };
   var sess = null, timer = null;
-  var SPONSOR = '<p class="sponsor">Geborg deur <a href="https://www.heynstech.com/" target="_blank" rel="noopener">Heynstech</a></p>';
+  var SPONSOR = '<p class="sponsor">Geborg deur <a href="https://www.heynstech.com/" target="_blank" rel="noopener">Heynstech</a>' +
+    '<span class="ver"> · Weergawe ' + W.VERSION + '</span></p>';
   var DISCLAIMER = 'Hierdie app is gratis en is nie geaffilieer met die Departement van Basiese Onderwys nie. ' +
     'Privaatheid: geen advertensies en geen aanmelding nie, en die app samel self niks in nie. Vordering bly net op hierdie toestel. ' +
     'Net ’n nota wat jy self stuur (“Help om die app te verbeter”), gaan na ons toe, sonder jou kind se naam.';
@@ -46,6 +47,7 @@
       }).join('') +
       '<button class="person add" data-act="newProfile"><span class="av">＋</span><span>Nuwe speler</span></button></div>' +
       installSlot() + strip() + SPONSOR + '</div>', 'bg-home');
+    W.Update.check();
   }
   function showNewProfile(first) {
     render('<div class="page center">' +
@@ -103,6 +105,7 @@
       '<div class="books">' + bookCard(1, b1, '1 & 2') + bookCard(2, b2, '3 & 4') + '</div>' +
       '<button class="btn wide review" data-act="review">🔁 Hersiening: oefen gemengde vrae</button>' +
       installSlot() + strip() + SPONSOR + '</div>', 'bg-home');
+    W.Update.check();
   }
 
   /* ============ Boek ============ */
@@ -437,7 +440,8 @@
         return '<button class="chip" style="--c:' + TERM_COL[w.term] + '" data-act="intro" data-id="' + w.id + '"><b>' + w.id + '</b> ' + esc(w.title) + ' ' + starStr(d.ws[w.id].best) + '</button>';
       }).join('') + '</div></section>' : '') +
       '<section><h2>💬 Help om die app te verbeter</h2><p class="note">Sien jy ’n fout, klink ’n woord verkeerd, of het jy ’n idee? Stuur vir ons ’n kort nota. ' +
-      'Op ’n vraag self is daar ook ’n 💬-knoppie wat die vraag saamstuur. Moenie persoonlike inligting in die nota sit nie.</p>' +
+      'Op ’n vraag self is daar ook ’n 💬-knoppie wat die vraag saamstuur. Onderwysers: kies “Onderwyser” en tik die verwysing wat jy gekry het. ' +
+      'Moenie persoonlike inligting in die nota sit nie.</p>' +
       '<button class="btn small" data-act="note">Skryf ’n nota</button>' +
       (W.Notes.waiting() ? ' <small class="muted">' + W.Notes.waiting() + ' nota(s) wag vir internet</small>' : '') + '</section>' +
       '<section><h2>📲 Installeer die app</h2><div id="installPanel">' + W.Install.panel() + '</div></section>' +

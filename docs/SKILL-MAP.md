@@ -5,7 +5,12 @@ Verander die kode en genereer weer. Sien [TUTOR-DESIGN.md](TUTOR-DESIGN.md) vir 
 
 **Wat om na te gaan:** (1) is die klein vaardighede en hul voorvereistes reg vir Graad 1?
 (2) Is die foute werklik algemeen, en is die verduidelikings en wenke in goeie, kindervriendelike Afrikaans?
-(3) Ontbreek daar foute wat u gereeld in die klas sien?
+(3) Ontbreek daar foute wat u gereeld in die klas sien? (4) Watter ander maniere om dit te wys, pas by
+hoe u klas dit leer (afdeling 4)?
+
+**Hoe om te antwoord:** met die 💬-knoppie in die app (op 'n vraag self, of Ouerhoek → *Skryf 'n nota*).
+Kies *Onderwyser* en tik die verwysing wat u gekry het, sodat ons u notas saam kan lees. Of skryf op 'n
+gedrukte kopie van hierdie bladsy.
 
 ## 1. Vaardighede
 
@@ -57,7 +62,7 @@ Die vaardighede wat 'n kind nodig het, in volgorde. "Les" beteken Juffrou Padda 
 | `compareNumbers` | Woorde: grootste, kleinste, groter, kleiner → Herken getalle (syfers) → Vergelyk hoeveelhede en getalle | ja |
 | `count` | Tel een vir een | ja |
 | `countInScene` | Tel een vir een | ja |
-| `countOn` | Getalvolgorde: voor, ná en tussen → Tel terug → Tel aan vanaf ’n getal | ja |
+| `countOn` | Getalvolgorde: voor, ná en tussen → Tel aan vanaf ’n getal → Tel terug | ja |
 | `double` | Woorde: dubbel en helfte → Verdubbel | ja |
 | `frame` | Sien hoeveel in ’n tienraam | ja |
 | `gridPattern` | Getalvolgorde: voor, ná en tussen → Tel in sprongetjies (2, 5, 10) | ja |
@@ -251,3 +256,139 @@ Vir elke fout: wat dit aandui, wat die kind hoor, hoe Juffrou Padda die les begi
 - **Kind (wenk):** As jy koop, het jy minder geld oor.
 - **Juffrou Padda:** Kom ons kyk hoeveel geld oorbly.
 - **Tuis:** Speel winkel: jy het R10, die lekker kos R3. Hoeveel het jy oor?
+
+## 4. Ander maniere om dit te wys (u keuse, asseblief)
+
+Nou wys Juffrou Padda elke soort vraag op een manier. Ons wil graag 'n tweede (of derde) manier byvoeg:
+as 'n kind dit die eerste keer nie verstaan nie, sien hy dit op 'n ander manier, en nie net weer
+dieselfde nie. Die maniere moet ooreenstem met hoe u in die klas leer, anders raak die kind deurmekaar.
+
+**Vir elke groep:** merk die maniere wat u klas gebruik, en nommer hulle in die volgorde waarin u dit
+leer (1 = eerste). Skrap wat nie by Graad 1 pas nie, en voeg by wat ontbreek.
+
+**Twee vrae:**
+
+1. Moet die tweede keer wat 'n kind *Wys my hoe* vra, 'n ander manier wys? Of is dit beter om in Graad 1
+   by een manier te bly?
+2. Mag Juffrou Padda dieselfde metode met 2 of 3 verskillende sinne verduidelik, sodat dit nie
+   herhalend klink nie?
+
+### Tel
+
+Vraagtipes: `count`, `countInScene`, `matchGroup`, `frame`
+
+- **Nou in die app:** Raak aan elkeen en tel een vir een; die laaste getal wat ons sê, is hoeveel daar is. By die tienraam: een ry is 5.
+- [ ] Skuif elkeen eenkant toe terwyl ons tel, sodat niks twee keer getel word nie.
+- [ ] Herken klein groepies sonder om te tel (dobbelsteen- en vingerpatrone).
+- [ ] Tel aan vanaf 5 of 10 met die tienraam ("5, 6, 7").
+- [ ] Groepeer in vywe of tiene en tel dan die groepe.
+- [ ] Ander: …
+
+### Optel
+
+Vraagtipes: `add`, `add3`, `countOn`, `wordProblem`, `moneySum`
+
+- **Nou in die app:** Begin by die groter getal en spring vorentoe op die getallelyn. Stories: teken eers die storie, dan die getallesin.
+- [ ] Tel alles: maak albei groepe met voorwerpe en tel almal.
+- [ ] Tel aan op die vingers vanaf die groter getal.
+- [ ] Maak eers 10 met die tienraam (as die som oor 10 gaan).
+- [ ] Dubbels en amper-dubbels (6 + 7 = 6 + 6 + 1).
+- [ ] Omruil: 2 + 9 is dieselfde as 9 + 2, so begin by 9.
+- [ ] Breek die tweede getal op: 8 + 5 = 8 + 2 + 3.
+- [ ] Ander: …
+
+### Aftrek
+
+Vraagtipes: `sub`, `countOn`, `wordProblem`, `moneyChange`
+
+- **Nou in die app:** Tot 10: vat weg met krale. Bo 10: tel terug op die getallelyn.
+- [ ] Tel op van die kleiner getal na die groter ("van 5 tot 8 is 3").
+- [ ] Terug deur 10 (13 – 5: eers 3 weg tot by 10, dan nog 2).
+- [ ] Dink aan die optelsom: 8 – 3 = ?, want 3 + 5 = 8.
+- [ ] Vingers: steek soveel vingers op as die eerste getal en vou die weggevatte vingers af.
+- [ ] Vergelyk in pare (vir "hoeveel meer?").
+- [ ] Ander: …
+
+### Bindings (twee getalle wat saam 'n getal maak)
+
+Vraagtipes: `bond`, `pairs`
+
+- **Nou in die app:** Krale in twee kleure: sit een vir een by tot by die getal.
+- [ ] Tienraam met twee kleure.
+- [ ] Die vingers van twee hande.
+- [ ] Getalhuisie of deel-deel-geheel-prentjie.
+- [ ] Omruil-pare: 3 en 7, 7 en 3.
+- [ ] Al die pare in volgorde: 0 en 10, 1 en 9, 2 en 8, …
+- [ ] Ander: …
+
+### Oor 10 (brug)
+
+Vraagtipes: `bridge10`
+
+- **Nou in die app:** Tienraam: maak eers 10, dan die res (8 + 5 = 8 + 2 + 3).
+- [ ] Getallelyn met twee spronge: eers tot by 10, dan verder.
+- [ ] Telraam of krale in tiene.
+- [ ] Amper-dubbels (7 + 8 = 7 + 7 + 1).
+- [ ] Ander: …
+
+### Dubbels en helftes
+
+Vraagtipes: `double`, `nearDouble`, `half`
+
+- **Nou in die app:** Skoenlapper met twee gelyke vlerke. Helftes: deel een vir een in twee groepe.
+- [ ] Spieël: hou 'n spieël langs die voorwerpe.
+- [ ] Dobbelsteen-dubbels (twee dobbelstene met dieselfde getal).
+- [ ] Vingers: dieselfde getal op albei hande.
+- [ ] Helfte as die omgekeerde van dubbel: "watter getal se dubbel is 8?"
+- [ ] Ander: …
+
+### Groepe, herhaalde optelling en deel
+
+Vraagtipes: `groups`, `repeatedAdd`, `share`
+
+- **Nou in die app:** Tel in groepe (tweë, vywe, tiene). Deel een vir een uit, een vir elke kind.
+- [ ] Spronge van dieselfde grootte op die getallelyn.
+- [ ] Rye en kolomme ('n skikking).
+- [ ] Deel in groepies: hoeveel groepe van 3 pas in 12?
+- [ ] Herhaalde aftrekking vir deel (12 – 3 – 3 – 3 – 3).
+- [ ] Ander: …
+
+### Getalpatrone, een meer of minder, ontbrekende getalle
+
+Vraagtipes: `missing`, `gridPattern`, `hops`, `moreLess`
+
+- **Nou in die app:** Loop of spring op die getallelyn.
+- [ ] Honderdkaart: kyk na die rye en kolomme.
+- [ ] Tel hardop met 'n ritme (klap by elke tweede getal).
+- [ ] Een meer of minder met blokkies of 'n toring.
+- [ ] Ander: …
+
+### Vergelyk
+
+Vraagtipes: `compareGroups`, `compareNumbers`
+
+- **Nou in die app:** Groepe: sit hulle in pare. Getalle: kyk waar hulle op die getallelyn lê.
+- [ ] Tel albei groepe en vergelyk die getalle.
+- [ ] Bou torings: die hoër toring het meer.
+- [ ] Vergelyk eers die tiene, dan die ene.
+- [ ] Ander: …
+
+### Tiene en ene
+
+Vraagtipes: `tenAndMore`, `placeValue`, `frame`
+
+- **Nou in die app:** Een vol tienraam is 10, en die ekstra kolle is die ene.
+- [ ] Bondeltjies van tien stokkies en los stokkies.
+- [ ] Geld: R10 en R1-munte.
+- [ ] Plekwaardekaarte (pylkaarte): 10 en 3 maak 13.
+- [ ] Ander: …
+
+### Geld
+
+Vraagtipes: `moneyTotal`, `moneySum`, `moneyChange`
+
+- **Nou in die app:** Begin by die munt met die grootste waarde en tel die waardes aan. Somme met geld: op die getallelyn.
+- [ ] Maak eers R10 en tel dan verder.
+- [ ] Speelwinkel met regte of papiermunte.
+- [ ] Kleingeld: tel op van die prys tot by wat ons betaal het.
+- [ ] Ander: …
