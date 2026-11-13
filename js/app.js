@@ -157,7 +157,7 @@
     else items = plan(ws.ex.map(function (e) { return { gen: e[0], p: e[1], ws: ws.id }; }), n);
     sess = {
       ws: ws, review: !!review, items: items.map(function (it) { return Object.assign({ scored: true, state: 'todo' }, it); }),
-      i: 0, ft: 0, scoredN: items.length, extra: 0, seen: {}
+      i: 0, ft: 0, scoredN: items.length, extra: 0, seen: {}, touched: {}, fbTok: 0
     };
     nextQuestion();
   }
@@ -179,6 +179,8 @@
     sess.locked = false;
     sess.helped = false;
     sess.misSeen = [];
+    sess.ev = {};       // bewys per vaardigheid vir hierdie vraag (hoogstens een keer)
+    sess.hintSay = [];
     renderQuestion();
   }
   function dots() {
@@ -246,7 +248,24 @@
     var fb = document.getElementById('fb');
     if (!fb) return;
     fb.className = 'feedback show ' + kind;
-    fb.innerHTML = '<div class="fbin">' + html + (withNext ? '<button class="btn go" data-act="next">Volgende ➜</button>' : '') + '</div>';
+    // 'n Wenk-strook kan weggetik word, sodat dit nie die syferblok bedek terwyl die kind weer probeer nie
+    fb.innerHTML = '<div class="fbin"' + (kind === 'retry' ? ' data-act="fbhide"' : '') + '>' + html + (withNext ? '<button class="btn go" data-act="next">Volgende ➜</button>' : '') + '</div>';
+  }
+  /* Sê die wenk; die strook bly totdat die stem klaar is (minstens 3,5 s). */
+  function sayHint(extra) {
+    var tok = ++sess.fbTok, q0 = sess.q, t0 = Date.now();
+    W.Voice.speak([].concat(extra || [], sess.hintSay)).then(function () {
+      if (!sess || sess.q !== q0 || sess.fbTok !== tok || sess.locked) return;
+      timer = setTimeout(function () {
+        if (sess && sess.q === q0 && sess.fbTok === tok && !sess.locked) hideFeedback();
+      }, Math.max(900, 3500 - (Date.now() - t0)));
+    });
+  }
+  /* Bewys vir die leerdermodel: hoogstens een keer per vaardigheid per vraag. */
+  function nodeEv(n, ok) {
+    if (!n || sess.ev[n] != null) return;
+    sess.ev[n] = ok; sess.touched[n] = 1;
+    S.recordNode(n, ok);
   }
   function hideFeedback() { var fb = document.getElementById('fb'); if (fb) fb.className = 'feedback'; }
 
@@ -254,13 +273,15 @@
   function result(ok, value) {
     if (sess.locked) return;
     clearTimeout(timer); // 'n wenk se wegsteek-tydhouer mag nie die "Volgende"-strook van die tweede fout wegsteek nie
+    sess.fbTok++;
     var q = sess.q, it = sess.items[sess.i], path = W.Tutor.path(it.gen, q);
     if (ok) {
       sess.locked = true;
-      var first = sess.attempts === 0 && !sess.helped;
-      if (it.scored) { if (first) sess.ft++; S.recordAnswer(q.skill, first); }
-      if (first) path.forEach(function (n) { S.recordNode(n, true); });
-      it.state = first ? 'good' : 'help';
+      // Hulp kos nie sterre nie: reg met die eerste probeerslag tel, ook ná "Wys my hoe" (oranje kolletjie).
+      var first = sess.attempts === 0, alone = first && !sess.helped;
+      if (it.scored) { if (first) sess.ft++; if (!sess.helped) S.recordAnswer(q.skill, first); }
+      if (alone) W.Tutor.testable(q, path).forEach(function (n) { nodeEv(n, true); });
+      it.state = alone ? 'good' : 'help';
       W.Sfx.good();
       var pr = U.pick(AF.PRAISE);
       feedback('good', '<span class="big">✓</span> ' + pr);
@@ -272,13 +293,12 @@
     W.Sfx.bad();
     var misId = value != null && q.mis ? q.mis[String(value)] : null;
     if (misId) {
-      if (sess.misSeen.indexOf(misId) < 0) S.recordMis(misId, W.Tutor.misNode(misId, path)); // een keer per vraag
+      if (sess.misSeen.indexOf(misId) < 0) { S.recordMis(misId); nodeEv(W.Tutor.misNode(misId, path), false); } // een keer per vraag
       sess.misSeen.push(misId);
-    }
+    } else nodeEv(path[path.length - 1], false); // onbekende fout: teen die doelvaardigheid
     if (sess.attempts >= 2) {
       sess.locked = true;
-      if (it.scored) S.recordAnswer(q.skill, false);
-      if (!sess.misSeen.length && path.length) S.recordNode(path[path.length - 1], false);
+      if (it.scored && !sess.helped) S.recordAnswer(q.skill, false);
       it.state = 'help';
       reveal();
       feedback('reveal', '<b>Kom ons kyk saam.</b> ' + esc(q.explain), true);
@@ -295,10 +315,11 @@
       }
       return;
     }
-    var msg = U.pick(AF.TRY_AGAIN), hint = misId ? W.MIS[misId].child : q.hint;
-    feedback('retry', '<b>' + esc(msg) + '</b> ' + esc(hint || ''));
-    W.Voice.speak([msg, hint]);
-    timer = setTimeout(hideFeedback, 3500);
+    // Kort fout-wenk (as ons die fout herken) en dan die vraag se eie wenk, met die getalle van hierdie vraag
+    var msg = U.pick(AF.TRY_AGAIN);
+    sess.hintSay = [misId ? W.MIS[misId].child : null, q.hint].filter(Boolean);
+    feedback('retry', '<b>' + esc(msg) + '</b> ' + esc(sess.hintSay.join(' ')));
+    sayHint(msg);
   }
   function advance() { hideFeedback(); sess.i++; nextQuestion(); }
 
@@ -323,6 +344,7 @@
   /* ============ Resultate ============ */
   function finish() {
     var ws = sess.ws, n = sess.scoredN, ft = sess.ft, stars;
+    S.endSession(Object.keys(sess.touched));
     if (sess.review) stars = S.starsFor(ft, n);
     else stars = S.recordSession(ws.id, ft, n);
     W.Sfx.win();
@@ -410,7 +432,7 @@
       '<section><h2>' + p.avatar + ' ' + esc(p.name) + ' se vordering</h2>' +
       '<table class="ptable">' + termRows + '</table></section>' +
       tutorReport(p, d) +
-      '<section><h2>Vaardighede</h2>' + (skillRows ? '<p class="note">Persentasie reg met die eerste probeerslag (laaste 20 vrae per vaardigheid).</p><table class="ptable">' + skillRows + '</table>' : '<p class="note">Nog geen vrae beantwoord nie.</p>') + '</section>' +
+      '<section><h2>Vaardighede</h2>' + (skillRows ? '<p class="note">Persentasie reg met die eerste probeerslag (laaste 20 vrae per vaardigheid). Vrae waar 💡 Wys my hoe gebruik is, tel nie hier nie.</p><table class="ptable">' + skillRows + '</table>' : '<p class="note">Nog geen vrae beantwoord nie.</p>') + '</section>' +
       (weak.length ? '<section><h2>Werkblaaie om weer te oefen</h2><div class="weak">' + weak.map(function (w) {
         return '<button class="chip" style="--c:' + TERM_COL[w.term] + '" data-act="intro" data-id="' + w.id + '"><b>' + w.id + '</b> ' + esc(w.title) + ' ' + starStr(d.ws[w.id].best) + '</button>';
       }).join('') + '</div></section>' : '') +
@@ -429,7 +451,7 @@
       '<button class="btn small" data-act="resetP">Begin vordering oor</button>' +
       '<button class="btn small danger" data-act="delP">Verwyder speler</button></div></section>' +
       '<section><h2>Oor hierdie app</h2><p class="note">Gebou rondom die DBO se Reënboog-werkboeke <i>Wiskunde in Afrikaans, Graad 1</i>: Boek 1 (Kwartaal 1 en 2, werkblaaie 1 – 64) en Boek 2 (Kwartaal 3 en 4, werkblaaie 65 – 128). ' +
-      'Elke werkblad in die app het dieselfde nommer as in die boek en oefen dieselfde vaardighede met nuwe vrae elke keer. Drie sterre beteken die kind het 90% of meer met die eerste probeerslag reg gehad. ' +
+      'Elke werkblad in die app het dieselfde nommer as in die boek en oefen dieselfde vaardighede met nuwe vrae elke keer. Drie sterre beteken die kind het 90% of meer met die eerste probeerslag reg gehad. Hulp met 💡 Wys my hoe kos nie sterre nie. ' +
       'Verkeerde antwoorde kry eers ’n wenk; ná ’n tweede fout wys die app die antwoord en kom later met ’n soortgelyke vraag terug. Vordering word net op hierdie toestel gestoor. Weergawe ' + W.VERSION + '.</p>' +
       '<p class="note">' + DISCLAIMER + '</p>' + SPONSOR + '</section>' +
       '</div>', 'bg-book');
@@ -446,12 +468,13 @@
     if (!any) return html + '<p class="note">Juffrou Padda hou dop watter klein vaardighede al vas is. Speel ’n paar werkblaaie, dan verskyn die verslag hier.</p></section>';
     if (r.roots.length) {
       html += '<h3>Begin hier</h3><ul class="roots">' + r.roots.map(function (x) {
-        return '<li><b>' + esc(x.name) + '</b> <span class="flag">' + Math.round(x.acc * 100) + '%</span>' +
+        return '<li><b>' + esc(x.name) + '</b> <span class="flag">' + x.ok + ' uit ' + x.n + ' reg</span>' +
           (x.blocks.length ? '<br><small>Dit hou ook terug: ' + esc(x.blocks.join(', ')) + '</small>' : '') + '</li>';
       }).join('') + '</ul>';
-    } else html += '<p class="note">Geen swak plekke nie. 🎉</p>';
+    } else html += r.watching ? '<p class="note">Juffrou Padda hou ' + r.watching + ' vaardighe' + (r.watching > 1 ? 'de' : 'id') + ' dop (rooi in die kaart hier onder). ’n Swak plek verskyn hier eers as dit twee werkblaaie agtereen moeilik was.</p>' :
+      '<p class="note">Geen swak plekke nie. 🎉</p>';
     if (r.mis.length) {
-      html += '<h3>Foute wat herhaal</h3><ul class="misl">' + r.mis.slice(0, 5).map(function (m) {
+      html += '<h3>Foute wat herhaal word (laaste 14 dae)</h3><ul class="misl">' + r.mis.slice(0, 5).map(function (m) {
         return '<li>' + esc(m.parent) + ' <span class="flag">' + m.n + '×</span><br><small>💡 Tuis: ' + esc(m.home) + '</small></li>';
       }).join('') + '</ul>';
     }
@@ -459,7 +482,7 @@
       return '<div class="sgroup"><b>' + esc(W.SKILLGROUPS[g]) + '</b>' + Object.keys(W.SKILLMAP).filter(function (id) { return W.SKILLMAP[id].g === g; }).map(function (id) {
         return '<span class="snode ' + W.Tutor.nodeState(nodes, id) + '">' + esc(W.SKILLMAP[id].name) + '</span>';
       }).join('') + '</div>';
-    }).join('') + '</div><p class="note">Groen: vas · Oranje: besig om te leer · Rooi: oefen nog · Grys: nog nie genoeg gesien nie.</p></section>';
+    }).join('') + '</div><p class="note">Groen: vas · Oranje: besig om te leer · Rooi: oefen nog · Grys: nog nie genoeg gesien nie (minstens 6 vrae).</p></section>';
     return html;
   }
 
@@ -499,7 +522,12 @@
       if (String(v).trim() === String(d.a)) showParents();
       else document.getElementById('gate').classList.add('shake');
     },
-    speak: function () { speakQ(); },
+    speak: function () {
+      // Terwyl 'n wenk-strook wys, herhaal 🔊 die wenk; anders die vraag
+      var fb = document.getElementById('fb');
+      if (fb && / show retry/.test(' ' + fb.className) && sess.hintSay.length) sayHint(); else speakQ();
+    },
+    fbhide: function () { if (sess) sess.fbTok++; hideFeedback(); },
     showme: function () {
       if (sess.locked) return;
       var it = sess.items[sess.i], q = sess.q, q2 = null;

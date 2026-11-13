@@ -1,7 +1,7 @@
 /* Klein hulpfunksies wat oral gebruik word. Alles hang aan die globale W-objek
    sodat die app sonder 'n bou-stap (en selfs vanaf file://) werk. */
 var W = window.W || (window.W = {});
-W.VERSION = '1.1'; // verhoog saam met CACHE in sw.js by elke uitgawe
+W.VERSION = '1.2'; // verhoog saam met CACHE in sw.js by elke uitgawe
 
 W.U = (function () {
   function rnd(min, max) { // heelgetal, insluitend albei kante

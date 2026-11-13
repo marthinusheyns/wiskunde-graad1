@@ -51,11 +51,24 @@ W.Store = (function () {
     x.t++; if (ok) x.c++;
     x.recent.push(ok ? 1 : 0);
     if (x.recent.length > 12) x.recent.shift();
+    // Swak ("rooi") met traagheid: dit word rooi onder 65% (minstens 6 antwoorde en 3 foute),
+    // en raak eers weer vry by 80%, sodat een goeie of slegte oomblik dit nie heen en weer laat flikker nie.
+    // (Gesimuleer: 'n kind wat 90% reg het, word in 48 antwoorde net 9% van die kere ooit rooi; 65% of swakker byna altyd.)
+    var n = x.recent.length, c = x.recent.reduce(function (a, b) { return a + b; }, 0);
+    if (x.red) { if (c / n >= 0.8) { x.red = false; x.redS = 0; } }
+    else if (n >= 6 && n - c >= 3 && c / n < 0.65) x.red = true;
+    save();
+  }
+  /* Aan die einde van 'n werkblad: tel hoeveel sessies agtereen elke geoefende vaardigheid swak was. */
+  function endSession(nodeIds) {
+    var d = data();
+    nodeIds.forEach(function (id) { var x = d.nodes[id]; if (x) x.redS = x.red ? (x.redS || 0) + 1 : 0; });
     save();
   }
   function recordMis(misId, nodeId) {
     var d = data(), m = d.mis[misId] || (d.mis[misId] = { n: 0, last: 0 });
     m.n++; m.last = Date.now();
+    m.times = (m.times || []).concat(m.last).slice(-10); // vir "herhaal onlangs", nie oor die hele jaar nie
     recordNode(nodeId, false);
   }
 
@@ -101,7 +114,7 @@ W.Store = (function () {
     profiles: profiles, addProfile: addProfile, removeProfile: removeProfile, setCurrent: setCurrent,
     current: current, data: data, recordAnswer: recordAnswer, recordSession: recordSession, wsInfo: wsInfo,
     totalStars: totalStars, skillAcc: skillAcc, settings: settings, setSetting: setSetting,
-    recordNode: recordNode, recordMis: recordMis,
+    recordNode: recordNode, recordMis: recordMis, endSession: endSession,
     resetProgress: resetProgress, renameProfile: renameProfile, starsFor: starsFor
   };
 })();

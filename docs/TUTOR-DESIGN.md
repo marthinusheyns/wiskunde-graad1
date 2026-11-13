@@ -3,7 +3,7 @@
 Status: **Phase 1 built** (core number and operation skills, Grade 1). Awaiting teacher review of `SKILL-MAP.md`.
 An independent review (November 2026) with bugs, ranked improvements, wording fixes and Phase 2
 advice is in [`TUTOR-REVIEW-2026-11.md`](TUTOR-REVIEW-2026-11.md). Its mechanical bugs were fixed in
-version 1.1.
+version 1.1. Improvements 2 to 4 (options, hints, learner model) and the star decision were done in 1.2.
 The skill map and mistake catalogue for teacher review are in [`SKILL-MAP.md`](SKILL-MAP.md),
 which is generated from the code by `node tools/skillmap-doc.js`.
 
@@ -20,7 +20,7 @@ back to the question.
 |---|---|
 | Tutor type | Rule-based, written in advance. No live AI and no data leaves the phone. AI may help *write* content, and a teacher reviews it. |
 | Character | **Juffrou Padda** 🐸 (the frog from the number lines), speaking with the recorded voice. |
-| Stars | Asking for help is never punished. A question where "Wys my hoe" was used counts as "with help" (orange dot), like a second attempt today. |
+| Stars | Asking for help never costs stars (confirmed 2026-11-13). A correct first attempt after "Wys my hoe" counts towards the stars and shows the orange "with help" dot. It doesn't count in the parents' skill percentages or as learner-model evidence. |
 | Review | A teacher checks the skill map, the mistake list and the Afrikaans wording (`SKILL-MAP.md`). |
 | Scope | Phase 1: core number and operation skills of Grade 1. The skill map is designed so Grade 2 attaches to it. |
 
@@ -30,10 +30,22 @@ back to the question.
    mistake. Example: 8 + 5 → 12 means "counted the start number again". A typed answer is
    interpreted the same way. One mistake gives the child a *specific* hint. Repeated mistakes
    show up in the parent report.
-2. **Evidence over time.** Each small skill on the path keeps a record: a correct first try counts
-   for every skill on the path, and a recognised mistake counts against its own skill. A skill is
-   *weak* when, over the last answers (at least 3), fewer than 70% were right. The **root gap** is
-   a weak skill whose prerequisites are all fine. That's where teaching should start.
+2. **Evidence over time.** Each small skill keeps its last 12 results, with at most one result
+   per skill per question.
+   - **Correct first try (without help):** counts for the target skill (the last on the path). A
+     prerequisite counts only if the child could have made its mistake: the matching wrong answer
+     was one of the options, or the answer was typed. Skills a question can't test stay grey.
+   - **Recognised mistake:** counts against its own skill.
+   - **Unrecognised wrong answer:** counts against the target skill.
+
+   A skill turns *weak* (red) when, after at least 6 answers and 3 misses, fewer than 65% were
+   right. It only stops being weak at 80%, so one good or bad moment doesn't make it flicker. In a
+   simulation, a child who is right 90% of the time turns red in 48 answers only 10% of the time;
+   a child at 65% or below almost always does.
+
+   The **root gap** is a weak skill whose prerequisites are all fine, and which has been weak at
+   the end of two worksheets in a row. That's where teaching should start. "Repeated mistakes"
+   count only the last 14 days.
 3. *(Phase 2)* **Probe questions down the path** ("Ons doen dit saam"): tiny questions, one per
    step, to find the first step that breaks when the wrong answer alone isn't conclusive.
 
@@ -41,6 +53,12 @@ back to the question.
 
 - **💡 Wys my hoe** on every question that has a lesson. Juffrou Padda shows a worked example
   on a *similar* question (so the answer isn't given away), then the child tries their own.
+- **After a first wrong answer**, a short mistake hint (at most 8 words, e.g. "Moenie die eerste
+  getal weer tel nie.") is followed by the question's own hint with its numbers. The hint bar
+  stays until the voice is done. A tap hides it, and 🔊 repeats it.
+- **Options** come from the mistake catalogue, but the answer's place by size is random. At most
+  one option is a recognised mistake (two when there are four options); the rest are nearby
+  values. So "always pick the biggest" doesn't work for plus.
 - **After a second wrong answer**, the lesson plays on the actual question, starting with the
   recognised mistake ("Ek dink jy het die 8 twee keer getel…"). A similar question then comes
   back later in the session (already the case today).

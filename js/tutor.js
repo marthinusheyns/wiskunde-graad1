@@ -73,32 +73,54 @@ W.Tutor = W.Tutor || {};
     if (!x || !x.recent.length) return null;
     return x.recent.reduce(function (a, b) { return a + b; }, 0) / x.recent.length;
   }
+  /* Grys onder 6 antwoorde. Rooi volg die traagheid in store.recordNode (x.red). */
   T.nodeState = function (nodes, id) {
     var x = nodes[id], a = acc(nodes, id);
-    if (!x || x.recent.length < 3) return 'grey';
-    return a >= 0.85 ? 'green' : a >= 0.7 ? 'orange' : 'red';
+    if (!x || x.recent.length < 6) return 'grey';
+    var red = x.red != null ? x.red : a < 0.65; // ouer data sonder x.red
+    return red ? 'red' : a >= 0.85 ? 'green' : 'orange';
+  };
+  /* Watter vaardighede op die pad het hierdie vraag werklik getoets? Die doelvaardigheid (laaste op die pad)
+     altyd; 'n voorvereiste net as die kind die fout wat daarby hoort kon maak (die fout-antwoord was 'n keuse,
+     of die kind kon dit intik). So kry 'n voorvereiste nie krediet vir iets wat nie kon misluk nie. */
+  T.testable = function (q, path) {
+    var ok = {}, mis = q.mis || {};
+    if (path.length) ok[path[path.length - 1]] = 1;
+    var vals = q.input.kind === 'choice' ? q.input.options.map(function (o) { return String(o.value); }) : Object.keys(mis);
+    vals.forEach(function (v) { if (mis[v]) ok[T.misNode(mis[v], path)] = 1; });
+    return path.filter(function (n) { return ok[n]; });
   };
   function allPre(id, seen) {
     seen = seen || {};
     (W.SKILLMAP[id] ? W.SKILLMAP[id].pre : []).forEach(function (p) { if (!seen[p]) { seen[p] = 1; allPre(p, seen); } });
     return seen;
   }
-  /* Wortelgapings: swak vaardighede waarvan geen voorvereiste self swak is nie. */
-  T.report = function (data) {
+  /* Wortelgapings: swak vaardighede waarvan geen voorvereiste self swak is nie, en wat al minstens twee
+     sessies agtereen swak was (een slegte dag is nog nie 'n swak plek nie). */
+  var RECENT = 14 * 864e5;
+  T.report = function (data, now) {
     var nodes = data.nodes || {}, mis = data.mis || {};
+    now = now || Date.now();
     var weak = Object.keys(W.SKILLMAP).filter(function (id) { return T.nodeState(nodes, id) === 'red'; });
     var roots = weak.filter(function (id) {
       var pre = allPre(id);
-      return !weak.some(function (w) { return pre[w]; });
+      return (nodes[id].redS || 0) >= 2 && !weak.some(function (w) { return pre[w]; });
     }).map(function (id) {
+      var r = nodes[id].recent;
       return {
         id: id, name: W.SKILLMAP[id].name, acc: acc(nodes, id),
+        ok: r.reduce(function (a, b) { return a + b; }, 0), n: r.length,
         blocks: weak.filter(function (w) { return w !== id && allPre(w)[id]; }).map(function (w) { return W.SKILLMAP[w].name; })
       };
     });
-    var misList = Object.keys(mis).filter(function (k) { return mis[k].n >= 2 && W.MIS[k]; })
-      .sort(function (a, b) { return mis[b].n - mis[a].n; })
-      .map(function (k) { return { id: k, n: mis[k].n, parent: W.MIS[k].parent, home: W.MIS[k].home }; });
-    return { roots: roots, mis: misList };
+    // Foute wat in die afgelope 14 dae minstens twee keer (by verskillende vrae) gebeur het
+    function recentN(m) {
+      if (m.times) return m.times.filter(function (t) { return now - t < RECENT; }).length;
+      return now - (m.last || 0) < RECENT ? m.n : 0;
+    }
+    var misList = Object.keys(mis).filter(function (k) { return W.MIS[k] && recentN(mis[k]) >= 2; })
+      .sort(function (a, b) { return recentN(mis[b]) - recentN(mis[a]); })
+      .map(function (k) { return { id: k, n: recentN(mis[k]), parent: W.MIS[k].parent, home: W.MIS[k].home }; });
+    return { roots: roots, mis: misList, watching: weak.length - roots.length };
   };
 })(W.Tutor);
