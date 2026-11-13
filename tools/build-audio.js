@@ -30,7 +30,7 @@ function loadApp() {
   const ctx = { console, Math, JSON };
   ctx.window = ctx;
   vm.createContext(ctx);
-  for (const f of ['util', 'af', 'visuals', 'gen-number', 'gen-ops', 'gen-measure', 'gen-space', 'gen-money-data', 'curriculum']) {
+  for (const f of ['util', 'af', 'visuals', 'gen-number', 'gen-ops', 'gen-measure', 'gen-space', 'gen-money-data', 'curriculum', 'tutor-data', 'tutor-lessons']) {
     vm.runInContext(fs.readFileSync(path.join(ROOT, 'js', f + '.js'), 'utf8'), ctx, { filename: f + '.js' });
   }
   return ctx.W;
@@ -51,6 +51,8 @@ function collectPieces(W) {
   W.AF.NAMES.forEach(add);
   W.AF.PRAISE.concat(W.AF.TRY_AGAIN).forEach(add);
   Object.values(W.AF.PHRASES).forEach(add);
+  if (W.MIS) Object.values(W.MIS).forEach((m) => { add(m.child); add(m.tutor); });
+  ['Kom ons kyk saam hoe om dit te doen.', 'Klaar'].forEach(add);
   for (let n = 0; n <= 20; n++) for (let t = 1; t <= 20; t++) add(W.AF.colourHint(n, t));
   // Vrae: genereer totdat daar vir 'n lang ruk niks nuuts bykom nie
   let round = 0, quiet = 0, before = 0;
@@ -63,6 +65,8 @@ function collectPieces(W) {
         add(q.explain);
         const inp = q.input;
         if (inp.kind === 'choice' && inp.layout === 'words' && inp.speakOptions !== false) inp.options.forEach((o) => add(String(o.label)));
+        if (W.LESSONS && W.LESSONS[g] && round % 3 === 0) W.LESSONS[g](q).forEach((f) => add(f.say));
+        if (W.LESSONS && W.LESSONS[g] && round % 3 === 1) Object.values(q.mis || {}).forEach((m) => W.LESSONS.forMistake(m, g, q).forEach((f) => add(f.say)));
       }
     }
     round++;

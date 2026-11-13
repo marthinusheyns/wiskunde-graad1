@@ -130,6 +130,7 @@
       '<div class="skills">' + Object.keys(skills).map(function (s) { return '<span>' + esc(W.SKILLS[s]) + '</span>'; }).join('') + '</div>' +
       (info ? '<p class="best">Beste: ' + starStr(info.best) + '</p>' : '') +
       '<button class="btn big go" data-act="start" data-id="' + w.id + '">▶ Begin</button>' +
+      (w.ex.some(function (e) { return W.Tutor.hasLesson(e[0]); }) ? '<br><button class="btn learn" data-act="learn" data-id="' + w.id + '">🐸 Leer my</button>' : '') +
       '</div>', 'bg-book');
   }
 
@@ -168,6 +169,8 @@
     sess.q = genQuestion(it);
     sess.attempts = 0;
     sess.locked = false;
+    sess.helped = false;
+    sess.misSeen = [];
     renderQuestion();
   }
   function dots() {
@@ -182,6 +185,7 @@
       (W.Voice.available() ? '<button class="icon" data-act="speak">🔊</button>' : '<span class="icon"></span>') + '</div>' +
       '<div class="wsline" style="--c:' + TERM_COL[ws.term] + '"><b>' + ws.id + '</b> ' + esc(ws.title) + '</div>' +
       '<div class="prompt">' + esc(q.prompt) + '</div>' +
+      (W.Tutor.hasLesson(it.gen) ? '<div class="helprow"><button class="helpbtn" data-act="showme">💡 Wys my hoe</button></div>' : '') +
       (q.visual ? '<div class="visual">' + q.visual + '</div>' : '') +
       '<div class="answer" id="answer"></div>' +
       '</div><div class="feedback" id="fb"></div>', 'bg-play');
@@ -237,13 +241,15 @@
   }
   function hideFeedback() { var fb = document.getElementById('fb'); if (fb) fb.className = 'feedback'; }
 
-  function result(ok) {
+  /* value: die gekose/getikte antwoord, sodat die tutor 'n bekende fout kan herken */
+  function result(ok, value) {
     if (sess.locked) return;
-    var q = sess.q, it = sess.items[sess.i];
+    var q = sess.q, it = sess.items[sess.i], path = W.Tutor.path(it.gen, q);
     if (ok) {
       sess.locked = true;
-      var first = sess.attempts === 0;
+      var first = sess.attempts === 0 && !sess.helped;
       if (it.scored) { if (first) sess.ft++; S.recordAnswer(q.skill, first); }
+      if (first) path.forEach(function (n) { S.recordNode(n, true); });
       it.state = first ? 'good' : 'help';
       W.Sfx.good();
       var pr = U.pick(AF.PRAISE);
@@ -254,13 +260,21 @@
     }
     sess.attempts++;
     W.Sfx.bad();
+    var misId = value != null && q.mis ? q.mis[String(value)] : null;
+    if (misId) { sess.misSeen.push(misId); S.recordMis(misId, W.Tutor.misNode(misId, path)); }
     if (sess.attempts >= 2) {
       sess.locked = true;
       if (it.scored) S.recordAnswer(q.skill, false);
+      if (!sess.misSeen.length && path.length) S.recordNode(path[path.length - 1], false);
       it.state = 'help';
       reveal();
       feedback('reveal', '<b>Kom ons kyk saam.</b> ' + esc(q.explain), true);
-      W.Voice.speak(q.explain);
+      if (W.Tutor.hasLesson(it.gen)) {
+        // Juffrou Padda wys hoe, op hierdie vraag, en begin by die fout wat ons herken het
+        var lastMis = sess.misSeen[sess.misSeen.length - 1];
+        var intro = lastMis ? W.MIS[lastMis].tutor : 'Kom ons kyk saam hoe om dit te doen.';
+        W.Tutor.play(lastMis ? W.LESSONS.forMistake(lastMis, it.gen, q, intro) : W.LESSONS[it.gen](q, intro), { done: 'Klaar ✓' });
+      } else W.Voice.speak(q.explain);
       // Oefen hierdie soort vraag later weer (hoogstens 3 ekstra vrae)
       if (sess.extra < 3 && q.input.kind !== 'trace') {
         sess.extra++;
@@ -268,9 +282,9 @@
       }
       return;
     }
-    var msg = U.pick(AF.TRY_AGAIN);
-    feedback('retry', '<b>' + esc(msg) + '</b> ' + esc(q.hint || ''));
-    W.Voice.speak([msg, q.hint]);
+    var msg = U.pick(AF.TRY_AGAIN), hint = misId ? W.MIS[misId].child : q.hint;
+    feedback('retry', '<b>' + esc(msg) + '</b> ' + esc(hint || ''));
+    W.Voice.speak([msg, hint]);
     timer = setTimeout(hideFeedback, 3500);
   }
   function advance() { hideFeedback(); sess.i++; nextQuestion(); }
@@ -382,6 +396,7 @@
       '<header class="hbar"><button class="icon" data-act="home">⬅</button><h1>Ouerhoek</h1><span></span></header>' +
       '<section><h2>' + p.avatar + ' ' + esc(p.name) + ' se vordering</h2>' +
       '<table class="ptable">' + termRows + '</table></section>' +
+      tutorReport(p, d) +
       '<section><h2>Vaardighede</h2>' + (skillRows ? '<p class="note">Persentasie reg met die eerste probeerslag (laaste 20 vrae per vaardigheid).</p><table class="ptable">' + skillRows + '</table>' : '<p class="note">Nog geen vrae beantwoord nie.</p>') + '</section>' +
       (weak.length ? '<section><h2>Werkblaaie om weer te oefen</h2><div class="weak">' + weak.map(function (w) {
         return '<button class="chip" style="--c:' + TERM_COL[w.term] + '" data-act="intro" data-id="' + w.id + '"><b>' + w.id + '</b> ' + esc(w.title) + ' ' + starStr(d.ws[w.id].best) + '</button>';
@@ -403,6 +418,31 @@
     document.getElementById('qc').addEventListener('change', function (e) { S.setSetting('qCount', +e.target.value); });
     document.getElementById('as').addEventListener('change', function (e) { S.setSetting('autoSpeak', e.target.checked); });
     document.getElementById('snd').addEventListener('change', function (e) { S.setSetting('sound', e.target.checked); });
+  }
+
+  /* "Waar sukkel ...?": wortelgapings, herhaalde foute (met wenke vir tuis) en die vaardigheidskaart */
+  function tutorReport(p, d) {
+    var r = W.Tutor.report(d), nodes = d.nodes || {};
+    var any = Object.keys(nodes).length;
+    var html = '<section><h2>🐸 Waar sukkel ' + esc(p.name) + '?</h2>';
+    if (!any) return html + '<p class="note">Juffrou Padda hou dop watter klein vaardighede al vas is. Speel ’n paar werkblaaie, dan verskyn die verslag hier.</p></section>';
+    if (r.roots.length) {
+      html += '<h3>Begin hier</h3><ul class="roots">' + r.roots.map(function (x) {
+        return '<li><b>' + esc(x.name) + '</b> <span class="flag">' + Math.round(x.acc * 100) + '%</span>' +
+          (x.blocks.length ? '<br><small>Dit hou ook terug: ' + esc(x.blocks.join(', ')) + '</small>' : '') + '</li>';
+      }).join('') + '</ul>';
+    } else html += '<p class="note">Geen swak plekke nie. 🎉</p>';
+    if (r.mis.length) {
+      html += '<h3>Foute wat herhaal</h3><ul class="misl">' + r.mis.slice(0, 5).map(function (m) {
+        return '<li>' + esc(m.parent) + ' <span class="flag">' + m.n + '×</span><br><small>💡 Tuis: ' + esc(m.home) + '</small></li>';
+      }).join('') + '</ul>';
+    }
+    html += '<h3>Vaardigheidskaart</h3><div class="smap">' + Object.keys(W.SKILLGROUPS).map(function (g) {
+      return '<div class="sgroup"><b>' + esc(W.SKILLGROUPS[g]) + '</b>' + Object.keys(W.SKILLMAP).filter(function (id) { return W.SKILLMAP[id].g === g; }).map(function (id) {
+        return '<span class="snode ' + W.Tutor.nodeState(nodes, id) + '">' + esc(W.SKILLMAP[id].name) + '</span>';
+      }).join('') + '</div>';
+    }).join('') + '</div><p class="note">Groen: vas · Oranje: besig om te leer · Rooi: oefen nog · Grys: nog nie genoeg gesien nie.</p></section>';
+    return html;
   }
 
   function confirmBox(text, yes, onYes) {
@@ -442,6 +482,24 @@
       else document.getElementById('gate').classList.add('shake');
     },
     speak: function () { speakQ(); },
+    showme: function () {
+      if (sess.locked) return;
+      var it = sess.items[sess.i], q = sess.q, q2 = null;
+      // 'n Soortgelyke vraag, sodat die antwoord nie weggegee word nie
+      for (var k = 0; k < 12; k++) {
+        q2 = W.G[it.gen](it.p);
+        if (String(q2.input.answer) !== String(q.input.answer) && q2.prompt !== q.prompt) break;
+      }
+      sess.helped = true;
+      W.Tutor.play(W.LESSONS[it.gen](q2, W.AF.PHRASES.showme), { done: W.AF.PHRASES.yourTurn }).then(function () {
+        if (sess && sess.q === q && !sess.locked) speakQ();
+      });
+    },
+    learn: function (d) {
+      var w = byId(d.id), e = w.ex.filter(function (x) { return W.Tutor.hasLesson(x[0]); })[0];
+      var q = W.G[e[0]](e[1]);
+      W.Tutor.play(W.LESSONS[e[0]](q, W.AF.PHRASES.learn), { done: 'Klaar ✓' });
+    },
     sayopt: function (d) { var o = sess.q.input.options[+d.i]; W.Voice.speak(o.label); },
     quit: function () {
       confirmBox('Wil jy ophou met hierdie werkblad?', 'Ja, stop', function () {
@@ -456,7 +514,7 @@
       var inp = sess.q.input, o = inp.options[+d.i];
       var ok = String(o.value) === String(inp.answer);
       if (ok) el.classList.add('right'); else { el.classList.add('wrong'); el.disabled = true; }
-      result(ok);
+      result(ok, o.value);
     },
     key: function (d) {
       if (sess.locked) return;
@@ -464,9 +522,9 @@
       if (d.k === 'del') sess.typed = sess.typed.slice(0, -1);
       else if (d.k === 'ok') {
         if (!sess.typed) return;
-        var ok = +sess.typed === inp.answer;
+        var typed = +sess.typed, ok = typed === inp.answer;
         disp.classList.toggle('wrong', !ok);
-        result(ok);
+        result(ok, typed);
         if (!ok && !sess.locked) sess.typed = '';
         if (ok) disp.classList.add('right');
       } else if (sess.typed.length < 3) { sess.typed += d.k; disp.classList.remove('wrong'); }

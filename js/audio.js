@@ -21,15 +21,19 @@ W.Say = (function () {
   }
   function available() { return !!voice; }
   function speak(text, opts) {
-    if (!synth || !voice) return false;
+    if (!synth || !voice) return null;
     opts = opts || {};
     try {
       synth.cancel();
       var u = new SpeechSynthesisUtterance(W.AF.speakable(text));
       u.voice = voice; u.lang = voice.lang; u.rate = opts.rate || 0.9; u.pitch = 1.05;
+      var done = new Promise(function (res) {
+        u.onend = res; u.onerror = res;
+        setTimeout(res, 1500 + String(text).length * 90); // vangnet
+      });
       synth.speak(u);
-      return true;
-    } catch (e) { return false; }
+      return done;
+    } catch (e) { return null; }
   }
   function stop() { try { synth && synth.cancel(); } catch (e) { } }
   function onReady(f) { listeners.push(f); if (ready) f(); }
@@ -113,29 +117,34 @@ W.Voice = (function () {
   function recorded() { return !!manifest; }
   function available() { return recorded() || W.Say.available(); }
 
+  var pending = [];
   function stop() {
     gen++;
     sources.forEach(function (s) { try { s.stop(); } catch (e) { } });
     sources = [];
+    pending.splice(0).forEach(function (r) { r(); });
     W.Say.stop();
   }
+  function estimate(texts) { return 600 + texts.join(' ').length * 60; }
+  function wait(ms) { return new Promise(function (res) { pending.push(res); setTimeout(res, ms); }); }
 
-  /* texts: een string of 'n lys strings wat na mekaar gesê word */
+  /* texts: een string of 'n lys strings wat na mekaar gesê word.
+     Gee 'n Promise terug wat klaar is wanneer die stem klaar gepraat het. */
   function speak(texts) {
     texts = [].concat(texts).filter(Boolean);
     stop();
-    if (!texts.length) return;
+    if (!texts.length) return Promise.resolve();
     var pieces = [];
     texts.forEach(function (t) { W.AF.segments(t).forEach(function (p) { pieces.push(p); }); });
-    if (!pieces.length) return;
+    if (!pieces.length) return Promise.resolve();
     var hs = pieces.map(W.AF.hash);
     var missing = !manifest || hs.some(function (h) { return !manifest[h]; });
-    if (missing && W.Say.available()) { W.Say.speak(texts.join(' ')); return; }
-    if (!manifest) return;
-    var c = ac(); if (!c) return;
+    if (missing && W.Say.available()) return W.Say.speak(texts.join(' ')) || wait(estimate(texts));
+    var c = manifest && ac();
+    if (!c) return wait(estimate(texts));
     var my = gen;
     var items = pieces.map(function (p, i) { return { p: p, h: hs[i] }; }).filter(function (x) { return manifest[x.h]; });
-    Promise.all(items.map(function (x) { return getBuf(x.h).catch(function () { return null; }); })).then(function (bufs) {
+    return Promise.all(items.map(function (x) { return getBuf(x.h).catch(function () { return null; }); })).then(function (bufs) {
       if (my !== gen) return;
       var t = c.currentTime + 0.05;
       bufs.forEach(function (b, i) {
@@ -145,6 +154,7 @@ W.Voice = (function () {
         sources.push(s);
         t += b.duration + (/[.!?]$/.test(items[i].p) ? 0.25 : 0.04);
       });
+      return wait(Math.max(0, (t - c.currentTime) * 1000));
     });
   }
 

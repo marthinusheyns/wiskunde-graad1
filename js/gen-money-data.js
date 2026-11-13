@@ -46,6 +46,7 @@ W.G = W.G || {};
     var ans = most ? Math.max.apply(null, opts) : Math.min.apply(null, opts);
     return {
       skill: 'geld',
+      data: { opts: opts, most: most, ans: ans },
       prompt: 'Watter een is die ' + (most ? 'meeste' : 'minste') + ' werd?',
       visual: '',
       input: { kind: 'choice', answer: ans, layout: 'pics', options: U.shuffle(opts).map(function (v) { return { value: v, html: V.money([v]) }; }) },
@@ -76,6 +77,7 @@ W.G = W.G || {};
     var opts = U.numChoices(total / step, { min: 1, max: (cents ? (p.max || 50) / 5 : maxR) + 2, n: 3, spread: 2 }).map(function (o) { return { value: o.value * step, label: L(o.value * step) }; });
     return {
       skill: 'geld',
+      data: { coins: coins, total: total, cents: !!cents, ans: total },
       prompt: 'Hoeveel geld is dit altesaam?',
       visual: V.money(coins),
       input: { kind: 'choice', answer: total, layout: 'words', options: opts },
@@ -115,6 +117,7 @@ W.G = W.G || {};
     else { a = rnd(1, max - 1); b = rnd(1, max - a); ans = a + b; prompt = 'R' + a + ' + R' + b + ' = ?'; }
     return {
       skill: 'geld',
+      data: { a: a, b: b, sub: sub, ans: ans },
       prompt: prompt,
       visual: '',
       input: { kind: 'number', answer: ans, prefix: 'R' },
@@ -133,6 +136,7 @@ W.G = W.G || {};
     var who = pick(AF.NAMES);
     return {
       skill: 'geld',
+      data: { have: have, cost: cost, ans: have - cost },
       prompt: who + ' het R' + have + '. ' + who + ' koop ' + it.n + ' vir R' + cost + '. Hoeveel geld het ' + who + ' oor?',
       visual: '<div class="shop"><span class="emo">' + it.e + '</span><span class="tag">R' + cost + '</span></div>',
       input: { kind: 'number', answer: have - cost, prefix: 'R' },

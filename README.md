@@ -18,6 +18,13 @@ often as needed.
 - **Stars per worksheet**: 3 stars = 90%+ right on the first try, 2 stars = 70%+, 1 star = completed.
 - **Hints, then the answer**: a wrong answer gets a hint. A second wrong answer shows the worked
   answer, and a similar question comes back at the end of the session (up to 3 extra, not scored).
+- **Juffrou Padda ("Wys my hoe" / "Leer my")**: a built-in tutor. Each question type has a
+  *critical path* of small skills (a 29-skill map). Wrong options match known mistakes, so a wrong
+  answer gets a hint about that specific mistake. After a second mistake, a short spoken lesson
+  shows how it's done (number-line hops, beads, ten-frames, sharing, coins), aimed at the broken
+  skill. The parents' section shows where the child struggles ("Begin hier") with home activities.
+  Design: [docs/TUTOR-DESIGN.md](docs/TUTOR-DESIGN.md). Teacher review:
+  [docs/SKILL-MAP.md](docs/SKILL-MAP.md) (regenerate with `node tools/skillmap-doc.js`).
 - **"Speel volgende"**: suggests the next worksheet that isn't mastered yet.
 - **Hersiening**: a mixed review of worksheets already played, weighted toward low stars and
   worksheets not played for a while.
@@ -91,6 +98,9 @@ app/
   js/store.js           profiles, progress, settings (localStorage)
   js/audio.js           speech + sound effects
   js/trace.js           finger tracing of numerals
+  js/tutor-data.js      skill map, mistake catalogue, critical paths, mistake-matched options
+  js/tutor-lessons.js   Juffrou Padda's lessons (frames of picture + spoken sentence)
+  js/tutor.js           lesson player and the parent-report logic (root gaps)
   js/app.js             screens and the question player
   tests/smoke.js        generates ~100k questions and validates every one
   tests/gallery.html    one sample of every question type, for visual checks

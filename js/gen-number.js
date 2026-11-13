@@ -27,6 +27,7 @@ W.G = W.G || {};
     var layout = p.layout || (n > 10 ? 'rows' : pick(['scatter', 'scatter', 'rows']));
     return {
       skill: 'tel',
+      data: { n: n, e: t.e },
       prompt: 'Hoeveel ' + t.p + ' is daar?',
       visual: V.objs(t.e, n, { layout: layout }),
       input: numInput(n, p, { min: 1, max: (p.max || 5) + 2 }),
@@ -46,6 +47,7 @@ W.G = W.G || {};
     var target = pick(kinds), t = AF.thing(target);
     return {
       skill: 'tel',
+      data: { n: counts[target], e: t.e },
       prompt: 'Hoeveel ' + t.p + ' kan jy sien?',
       visual: V.mixed(U.shuffle(list)),
       input: numInput(counts[target], p, { min: 0, max: (p.max || 5) + 2 }),
@@ -59,6 +61,7 @@ W.G = W.G || {};
     var n = rnd(p.min || 1, p.max || 10);
     return {
       skill: 'tel',
+      data: { n: n },
       prompt: 'Hoeveel kolletjies is daar?',
       visual: V.tenFrames(n),
       input: numInput(n, p, { min: 1, max: Math.max(12, n + 3) }),
@@ -120,6 +123,7 @@ W.G = W.G || {};
     var word = (by === 1 ? 'een' : 'twee') + (more ? ' meer' : ' minder');
     return {
       skill: 'vergelyk',
+      data: { n: n, by: by, more: more, ans: ans },
       prompt: 'Wat is ' + word + ' as ' + n + '?',
       visual: V.numberLine({ min: Math.max(0, n - 4), max: Math.max(0, n - 4) + 8, mark: [n] }),
       input: numInput(ans, p, { min: 0, max: (p.max || 10) + 2 }),
@@ -138,6 +142,7 @@ W.G = W.G || {};
     var ans = b > a ? 'meer' : b < a ? 'minder' : 'net soveel';
     return {
       skill: 'vergelyk',
+      data: { a: a, b: b, e: t.e, ans: ans },
       prompt: 'Het die tweede groep meer, net soveel of minder as die eerste groep?',
       visual: V.twoBoxes(V.objs(t.e, a, { layout: 'rows', size: 'md' }), V.objs(t.e, b, { layout: 'rows', size: 'md' }), 'Eerste', 'Tweede'),
       input: { kind: 'choice', answer: ans, layout: 'words', options: ['meer', 'net soveel', 'minder'].map(function (v) { return { value: v, label: v }; }) },
@@ -155,6 +160,7 @@ W.G = W.G || {};
     var w = k === 2 ? (big ? 'groter' : 'kleiner') : (big ? 'die grootste' : 'die kleinste');
     return {
       skill: 'vergelyk',
+      data: { nums: nums, big: big, ans: ans },
       prompt: 'Watter getal is ' + w + '?',
       visual: '',
       input: { kind: 'choice', answer: ans, layout: 'big', options: nums.map(function (v) { return { value: v, label: String(v) }; }) },
@@ -186,6 +192,7 @@ W.G = W.G || {};
     }
     return {
       skill: step === 1 ? 'volgorde' : 'patrone',
+      data: { seq: seq, step: step, back: back, idx: hideIdx, ans: ans },
       prompt: (back ? 'Tel terug. ' : STEP_WORD[step] || '') + 'Watter getal ontbreek?',
       visual: visual,
       input: numInput(ans, p, { min: Math.max(0, min - step), max: max + step, spread: 2, step: step }),
@@ -203,6 +210,7 @@ W.G = W.G || {};
     var hide = mults[k];
     return {
       skill: 'patrone',
+      data: { step: step, prev: mults[k - 1], ans: hide },
       prompt: 'Ons tel in ' + (step === 2 ? 'tweë' : step === 5 ? 'vywe' : 'tiene') + '. Watter getal moet ons volgende inkleur?',
       visual: V.numberGrid({ start: start, end: end, cols: cols, highlight: mults.slice(0, k), hide: [hide] }),
       input: numInput(hide, { mode: 'choice', choices: 4 }, { min: step, max: end + step, spread: 2, step: step === 10 ? 10 : 1 }),
@@ -220,6 +228,7 @@ W.G = W.G || {};
     var end = Math.max(n * step + step, step * 6);
     return {
       skill: 'patrone',
+      data: { step: step, n: n, ans: n * step },
       prompt: 'Die padda spring elke keer ' + step + '. Hy begin by 0 en spring ' + n + ' keer. Waar land hy?',
       visual: V.numberLine({ min: 0, max: end, tick: step <= 2 ? 1 : step, label: step <= 2 ? 'all' : 'all', hops: hops, start: 0 }),
       input: numInput(n * step, p, { min: 0, max: end, step: step, spread: 2 }),
@@ -249,6 +258,7 @@ W.G = W.G || {};
     var ans = a + 1;
     return {
       skill: 'volgorde',
+      data: { a: a, ans: ans },
       prompt: 'Watter getal kom tussen ' + a + ' en ' + (a + 2) + '?',
       visual: '<div class="seq"><span>' + a + '</span><span class="q">?</span><span>' + (a + 2) + '</span></div>',
       input: numInput(ans, p, { min: Math.max(0, a - 3), max: a + 5, spread: 2 }),
@@ -265,6 +275,7 @@ W.G = W.G || {};
     if (v === 0) {
       return {
         skill: 'tel',
+        data: { n: n, v: 0, e: t.e, ans: n - 10 },
         prompt: 'Daar is ' + n + ' ' + t.p + '. Ons het 10 omkring. Hoeveel bly oor?',
         visual: V.objs(t.e, n, { layout: 'rows', ringTo: 10 }),
         input: numInput(n - 10, { mode: 'choice' }, { min: 0, max: 10 }),
@@ -275,6 +286,7 @@ W.G = W.G || {};
     if (v === 1) {
       return {
         skill: 'tel',
+        data: { n: n, v: 1, ans: n - 10 },
         prompt: '10 en hoeveel maak ' + n + '?',
         visual: V.tenFrames(n),
         input: numInput(n - 10, { mode: 'choice' }, { min: 0, max: 10 }),
@@ -284,6 +296,7 @@ W.G = W.G || {};
     }
     return {
       skill: 'tel',
+      data: { n: n, v: 2, ans: n },
       prompt: 'Hoeveel kolletjies is daar altesaam?',
       visual: V.tenFrames(n),
       input: numInput(n, p, { min: 10, max: 20 }),
@@ -300,6 +313,7 @@ W.G = W.G || {};
     else { prompt = n + ' = 10 + ?'; ans = u; }
     return {
       skill: 'opbou',
+      data: { n: n, u: u, v: v, ans: ans },
       prompt: prompt,
       visual: '<div class="pv"><div class="pvcol"><b>Tiene</b><div class="pvten">' + V.beads(10, { colours: Array(10).fill('#ef5350') }) + '</div></div>' +
         '<div class="pvcol"><b>Ene</b>' + V.objs('🔵', u, { layout: 'rows', size: 'md' }) + '</div></div>',
@@ -343,6 +357,7 @@ W.G = W.G || {};
     var vals = U.numChoices(n, { min: 1, max: (p.max || 5) + 2, n: 3 }).map(function (o) { return o.value; });
     return {
       skill: 'tel',
+      data: { n: n, e: t.e },
       prompt: 'Watter groep het ' + n + ' ' + (n === 1 ? t.s : t.p) + '?',
       visual: '<div class="bignum">' + n + '</div>',
       input: {

@@ -37,6 +37,7 @@ W.G = W.G || {};
     }
     return {
       skill: 'optel',
+      data: { a: a, b: b, s: s },
       prompt: sentence(a, '+', b, p.words ? 'words' : (max <= 5 ? 'words' : pick(['words', 'sym', 'sym']))),
       visual: visual,
       input: numInput(s, p, { min: 0, max: max + 3 }),
@@ -64,6 +65,7 @@ W.G = W.G || {};
     }
     return {
       skill: 'aftrek',
+      data: { a: a, b: b, d: d },
       prompt: sentence(a, '-', b, p.words ? 'words' : (max <= 5 ? 'words' : pick(['words', 'sym', 'sym']))),
       visual: visual,
       input: numInput(d, p, { min: 0, max: max + 2 }),
@@ -83,6 +85,7 @@ W.G = W.G || {};
     var ans = form === 1 ? a : b;
     return {
       skill: 'opbou',
+      data: { n: n, k: form === 1 ? b : a, ans: ans },
       prompt: prompt,
       visual: n <= 10 ? V.beads(n, { colours: fill(n, form === 1 ? b : a, V.C.green, '#fff') }) : V.tenFrames(form === 1 ? b : a),
       input: numInput(ans, p, { min: 0, max: n }),
@@ -104,6 +107,7 @@ W.G = W.G || {};
     }
     return {
       skill: 'opbou',
+      data: { n: n },
       prompt: 'Watter twee getalle maak saam ' + n + '?',
       visual: V.beads(Math.min(n, 20)),
       input: { kind: 'choice', answer: right, layout: 'words', options: U.shuffle(opts) },
@@ -118,6 +122,7 @@ W.G = W.G || {};
     var s = a + b + c;
     return {
       skill: 'optel',
+      data: { a: a, b: b, c: c, s: s },
       prompt: a + ' + ' + b + ' + ' + c + ' = ?',
       visual: V.beads(s, { colours: U.range(0, s - 1).map(function (i) { return i < a ? V.C.green : i < a + b ? V.C.orange : V.C.blue; }) }),
       input: numInput(s, p, { min: 1, max: max + 3 }),
@@ -133,6 +138,7 @@ W.G = W.G || {};
       var a = rnd(11, Math.min(18, max)), u = a - 10, b = rnd(u + 1, Math.min(9, a - 1)), d = a - b;
       return {
         skill: 'aftrek',
+        data: { op: 'sub', a: a, b: b, u: u, d: d },
         prompt: a + ' – ' + b + ' = ?',
         visual: V.tenFrames(a, { split: d }) + '<div class="steps">' + a + ' – ' + u + ' = 10 &nbsp;→&nbsp; 10 – ' + (b - u) + ' = ?</div>',
         input: numInput(d, { mode: 'number' }),
@@ -143,6 +149,7 @@ W.G = W.G || {};
     var x = rnd(5, 9), need = 10 - x, y = rnd(need + 1, Math.min(9, max - x)), s = x + y;
     return {
       skill: 'optel',
+      data: { op: 'add', x: x, y: y, need: need, s: s },
       prompt: x + ' + ' + y + ' = ?',
       visual: V.tenFrames(s, { split: x }) + '<div class="steps">' + x + ' + ' + need + ' = 10 &nbsp;→&nbsp; 10 + ' + (y - need) + ' = ?</div>',
       input: numInput(s, { mode: 'number' }),
@@ -160,6 +167,7 @@ W.G = W.G || {};
     var lo = 0, hi = Math.max(10, Math.min(20, max));
     return {
       skill: back ? 'aftrek' : 'optel',
+      data: { a: a, b: b, back: back, ans: ans },
       prompt: 'Die padda begin by ' + a + ' en spring ' + b + ' keer ' + (back ? 'terug' : 'vorentoe') + '. Waar land hy?',
       visual: V.numberLine({ min: lo, max: hi, hops: hops, mark: [a], start: a }),
       input: numInput(ans, p, { min: 0, max: hi }),
@@ -207,6 +215,7 @@ W.G = W.G || {};
     }
     return {
       skill: skill,
+      data: { kind: kind, a: a, b: b, ans: ans, e: t.e, tp: t.p, s: kind === 'missing' ? a + b : null },
       prompt: text,
       visual: '<div class="wpic">' + t.e + '</div>',
       input: numInput(ans, { mode: max > 10 ? 'number' : p.mode }, { min: 0, max: max + 2 }),
@@ -220,6 +229,7 @@ W.G = W.G || {};
     var n = rnd(p.min || 1, p.max || 5), word = pick(['Dubbel ' + n + ' is ?', n + ' verdubbel is ?', n + ' + ' + n + ' = ?']);
     return {
       skill: 'verdubbel',
+      data: { n: n },
       prompt: word,
       visual: n <= 10 ? V.butterfly(n) : V.twoBoxes(V.objs('🔴', n, { layout: 'rows', size: 'sm' }), V.objs('🔴', n, { layout: 'rows', size: 'sm' })),
       input: numInput(2 * n, p, { min: 0, max: 2 * (p.max || 5) + 2, spread: 2 }),
@@ -234,6 +244,7 @@ W.G = W.G || {};
     var key = pick(AF.COUNTABLE), t = AF.thing(key);
     return {
       skill: 'verdubbel',
+      data: { m: m, n: n, e: t.e },
       prompt: pick(['Die helfte van ' + m + ' is ?', m + ' halveer is ?']),
       visual: '<div class="halves">' + V.objs(t.e, m, { layout: 'rows', size: m > 10 ? 'sm' : 'md' }) + '</div>',
       input: numInput(n, p, { min: 0, max: m, spread: 2 }),
@@ -248,6 +259,7 @@ W.G = W.G || {};
     var ans = 2 * n + (plus ? 1 : -1);
     return {
       skill: 'verdubbel',
+      data: { n: n, plus: plus, ans: ans },
       prompt: n + ' + ' + n + (plus ? ' + 1' : ' – 1') + ' = ?',
       visual: '<div class="steps">' + n + ' verdubbel is ' + (2 * n) + ' &nbsp;→&nbsp; ' + (2 * n) + (plus ? ' + 1' : ' – 1') + ' = ?</div>',
       input: numInput(ans, { mode: 'number' }),
@@ -265,6 +277,7 @@ W.G = W.G || {};
     if (v === 0) {
       return {
         skill: 'groepe',
+        data: { v: 0, g: g, s: s, e: t.e, ans: g * s },
         prompt: g + (g === 1 ? ' groep' : ' groepe') + ' van ' + s + ' is ?',
         visual: V.groups(t.e, g, s),
         input: numInput(g * s, p, { min: 0, max: max + s, step: s, spread: 2 }),
@@ -276,6 +289,7 @@ W.G = W.G || {};
       g = Math.max(2, g);
       return {
         skill: 'groepe',
+        data: { v: 1, g: g, s: s, e: t.e, ans: g },
         prompt: 'Daar is ' + (g * s) + ' ' + t.p + '. Hoeveel groepe van ' + s + ' kan jy maak?',
         visual: V.objs(t.e, g * s, { layout: 'scatter', size: g * s > 12 ? 'sm' : 'md' }),
         input: numInput(g, { mode: 'choice' }, { min: 1, max: Math.floor(max / s) + 2 }),
@@ -287,6 +301,7 @@ W.G = W.G || {};
     if (total > max) { g = Math.max(1, g - 1); total = g * s + r; }
     return {
       skill: 'groepe',
+      data: { v: 2, g: g, s: s, e: t.e, r: r, ans: r },
       prompt: 'Maak groepe van ' + s + ' met ' + total + ' ' + t.p + '. Hoeveel bly oor?',
       visual: V.objs(t.e, total, { layout: 'scatter', size: total > 12 ? 'sm' : 'md' }),
       input: numInput(r, { mode: 'choice' }, { min: 0, max: s }),
@@ -311,6 +326,7 @@ W.G = W.G || {};
     var sing = { hoenders: 'hoender', eende: 'eend', fietse: 'fiets', honde: 'hond', koeie: 'koei', motors: 'motor', hande: 'hand', sterre: 'ster', klawers: 'klawer', driehoeke: 'driehoek', geluksklawers: 'geluksklawer' }[ctx.who] || ctx.sing || ctx.who;
     return {
       skill: 'groepe',
+      data: { g: g, s: s, e: ctx.e, ans: g * s },
       prompt: 'Elke ' + sing + ' het ' + s + ' ' + ctx.what + '. Hoeveel ' + ctx.what + ' het ' + g + ' ' + ctx.who + ' altesaam?',
       visual: V.objs(ctx.e, g, { layout: 'line', size: 'lg' }) + '<div class="steps">' + sum + ' = ?</div>',
       input: numInput(g * s, p, { min: 0, max: max + s, step: s, spread: 2 }),
@@ -331,6 +347,7 @@ W.G = W.G || {};
     var askRem = rem > 0 && U.chance(0.5);
     return {
       skill: 'verdeel',
+      data: { k: k, total: total, each: each, rem: rem, askRem: askRem, e: t.e, ans: askRem ? rem : each },
       prompt: 'Verdeel ' + total + ' ' + t.p + ' gelykop tussen ' + k + ' kinders. ' + (askRem ? 'Hoeveel bly oor?' : 'Hoeveel kry elke kind?'),
       visual: '<div class="kids">' + kids + '</div>' + V.objs(t.e, total, { layout: 'scatter', size: total > 12 ? 'sm' : 'md' }),
       input: numInput(askRem ? rem : each, { mode: 'choice' }, { min: 0, max: Math.max(6, each + 3) }),

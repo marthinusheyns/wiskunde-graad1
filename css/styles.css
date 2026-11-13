@@ -337,3 +337,44 @@ table.grid td { width: 54px; height: 54px; border: 2px solid #b0bec5; text-align
   .pgraph td { min-width: 0; font-size: 22px; }
   .slot, .ptile { width: 70px; height: 70px; }
 }
+
+/* ---------- Juffrou Padda (tutor) ---------- */
+.helprow { display: flex; justify-content: center; margin: -4px 0 6px; }
+.helpbtn { background: #fff8e1; border: 2px solid #ffca28; border-radius: 999px; padding: 6px 16px; font-weight: 700; font-size: 17px; }
+.btn.learn { margin-top: 12px; background: #e8f5e9; }
+.tutor-ov { position: fixed; inset: 0; z-index: 60; background: rgba(38, 50, 56, .5); display: flex; align-items: center; justify-content: center; padding: 10px; }
+.tutor { background: var(--cream); border-radius: 26px; width: min(760px, 100%); max-height: 100%; overflow: auto; padding: 12px 14px 16px; box-shadow: 0 10px 40px rgba(0, 0, 0, .3); display: flex; flex-direction: column; gap: 10px; }
+.thead { display: flex; align-items: center; gap: 10px; font-size: 20px; }
+.thead .padda { font-size: 40px; }
+.thead b { flex: 1; }
+.tbubble { position: relative; background: #fff; border: 3px solid #81c784; border-radius: 20px; padding: 12px 16px; font-size: clamp(20px, 4.4vw, 26px); font-weight: 700; text-align: center; min-height: 64px; }
+.tvis { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 200px; gap: 8px; cursor: pointer; }
+.tdots { display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; }
+.tdots i { width: 9px; height: 9px; border-radius: 50%; background: #cfd8dc; }
+.tdots i.done { background: #81c784; }
+.tdots i.now { background: var(--green); transform: scale(1.3); }
+.tctrl { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+.objs.counted .o { position: relative; }
+.objs .o .badge { position: absolute; top: -6px; right: -10px; background: var(--blue); color: #fff; font-size: 14px; line-height: 20px; min-width: 22px; padding: 0 5px; border-radius: 999px; text-align: center; font-style: normal; }
+.objs .o.cur { transform: scale(1.18); filter: drop-shadow(0 0 6px #ffca28); }
+.pairs { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; background: #fff; border-radius: 16px; padding: 10px; }
+.prow, .plinks { display: flex; gap: 6px; }
+.pc { width: 46px; height: 46px; font-size: 36px; display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+.pc.extra { background: #fff59d; outline: 3px dashed var(--orange); }
+.plinks i { width: 46px; height: 14px; display: flex; justify-content: center; }
+.plinks i::after { content: ""; width: 3px; height: 14px; background: #90a4ae; }
+.pile { min-height: 46px; display: flex; justify-content: center; }
+.kidsrow { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.kidbox { background: #fff; border-radius: 16px; padding: 6px 10px; box-shadow: var(--shadow); display: flex; flex-direction: column; align-items: center; min-width: 76px; }
+.kidbox .kid { font-size: 34px; }
+.kidgot { font-size: 24px; max-width: 150px; text-align: center; min-height: 30px; }
+.parents h3 { font-size: 18px; margin: 14px 0 6px; }
+.roots, .misl { margin: 0; padding-left: 20px; font-size: 17px; }
+.roots li, .misl li { margin: 6px 0; }
+.smap { display: flex; flex-direction: column; gap: 10px; }
+.sgroup { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 15px; }
+.sgroup b { width: 100%; }
+.snode { border-radius: 999px; padding: 3px 10px; background: #eceff1; color: var(--muted); }
+.snode.green { background: #c8e6c9; color: #1b5e20; }
+.snode.orange { background: #ffe0b2; color: #e65100; }
+.snode.red { background: #ffcdd2; color: #b71c1c; font-weight: 700; }

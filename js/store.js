@@ -35,11 +35,28 @@ W.Store = (function () {
     var p = state.profiles.filter(function (x) { return x.id === state.current; })[0];
     return p || null;
   }
-  function blank() { return { ws: {}, skills: {}, lastWs: null }; }
+  function blank() { return { ws: {}, skills: {}, lastWs: null, nodes: {}, mis: {} }; }
   function data(id) {
     id = id || state.current;
     if (!state.data[id]) state.data[id] = blank();
-    return state.data[id];
+    var d = state.data[id];
+    if (!d.nodes) d.nodes = {};
+    if (!d.mis) d.mis = {};
+    return d;
+  }
+  /* Tutor: bewyse per klein vaardigheid, en hoe gereeld elke bekende fout voorkom */
+  function recordNode(nodeId, ok) {
+    if (!nodeId) return;
+    var d = data(), x = d.nodes[nodeId] || (d.nodes[nodeId] = { c: 0, t: 0, recent: [] });
+    x.t++; if (ok) x.c++;
+    x.recent.push(ok ? 1 : 0);
+    if (x.recent.length > 12) x.recent.shift();
+    save();
+  }
+  function recordMis(misId, nodeId) {
+    var d = data(), m = d.mis[misId] || (d.mis[misId] = { n: 0, last: 0 });
+    m.n++; m.last = Date.now();
+    recordNode(nodeId, false);
   }
 
   function recordAnswer(skill, firstTry) {
@@ -84,6 +101,7 @@ W.Store = (function () {
     profiles: profiles, addProfile: addProfile, removeProfile: removeProfile, setCurrent: setCurrent,
     current: current, data: data, recordAnswer: recordAnswer, recordSession: recordSession, wsInfo: wsInfo,
     totalStars: totalStars, skillAcc: skillAcc, settings: settings, setSetting: setSetting,
+    recordNode: recordNode, recordMis: recordMis,
     resetProgress: resetProgress, renameProfile: renameProfile, starsFor: starsFor
   };
 })();

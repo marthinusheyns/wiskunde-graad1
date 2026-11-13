@@ -105,6 +105,15 @@ teacher to check. Known pitfalls:
 - Every curriculum row needs 2–6 generators. A session draws 8 questions round-robin, so each
   generator appears at least once.
 
+### Tutor (Juffrou Padda) for Grade 2
+
+- Add the Grade 2 skills to `W.SKILLMAP` in `js/tutor-data.js` and **link them to the Grade 1
+  skills** (e.g. 2-digit addition builds on `bind10` and `tiene`). A Grade 2 child stuck on
+  34 + 25 is then sent back to the right Grade 1 skill.
+- For each new generator: add `data` (its numbers), a `W.Tutor.path` entry, mistake candidates
+  (wrong answer → mistake id), and a lesson in `js/tutor-lessons.js` if it's a core skill.
+- Regenerate `docs/SKILL-MAP.md` (`node tools/skillmap-doc.js`) and have a teacher review it.
+
 ## 5. Quality loop (what caught real bugs in Grade 1)
 
 1. `node tests/smoke.js` checks thousands of questions per worksheet: the answer is among the
