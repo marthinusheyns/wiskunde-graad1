@@ -1,6 +1,9 @@
 # "Leer my / Wys my hoe": tutor design
 
 Status: **Phase 1 built** (core number and operation skills, Grade 1). Awaiting teacher review of `SKILL-MAP.md`.
+An independent review (November 2026) with bugs, ranked improvements, wording fixes and Phase 2
+advice is in [`TUTOR-REVIEW-2026-11.md`](TUTOR-REVIEW-2026-11.md). Its mechanical bugs were fixed in
+version 1.1.
 The skill map and mistake catalogue for teacher review are in [`SKILL-MAP.md`](SKILL-MAP.md),
 which is generated from the code by `node tools/skillmap-doc.js`.
 

@@ -12,7 +12,7 @@ W.Tutor = W.Tutor || {};
   T.play = function (frames, opts) {
     opts = opts || {};
     return new Promise(function (resolve) {
-      var i = 0, playing = true, token = 0, closed = false;
+      var i = 0, playing = true, token = 0, closed = false, shownAt = 0;
       var ov = document.createElement('div');
       ov.className = 'tutor-ov';
       ov.innerHTML = '<div class="tutor" role="dialog" aria-label="Juffrou Padda">' +
@@ -26,7 +26,7 @@ W.Tutor = W.Tutor || {};
       var pauseBtn = ov.querySelector('[data-t=pause]'), nextBtn = ov.querySelector('[data-t=next]');
 
       function show(k) {
-        i = k;
+        i = k; shownAt = Date.now();
         var f = frames[i], my = ++token;
         bubble.textContent = f.say;
         vis.innerHTML = f.html;
@@ -51,14 +51,17 @@ W.Tutor = W.Tutor || {};
       }
       ov.addEventListener('click', function (e) {
         var b = e.target.closest('[data-t]');
-        if (!b) { if (e.target.closest('.tvis') && i < frames.length - 1) show(i + 1); return; }
+        if (!b) return; // 'n tik op die prentjie (bv. om saam te tel) blaai nie aan nie
         var t = b.getAttribute('data-t');
         if (t === 'close') close();
         else if (t === 'again') { playing = true; pauseBtn.textContent = '⏸'; show(0); }
         else if (t === 'pause') {
           playing = !playing; pauseBtn.textContent = playing ? '⏸' : '▶';
           if (playing) show(i); else { token++; W.Voice.stop(); }
-        } else if (t === 'next') { if (i < frames.length - 1) show(i + 1); else close(); }
+        } else if (t === 'next') {
+          var since = Date.now() - shownAt; // vinnige herhaalde tikke slaan nie die hele les oor nie
+          if (i < frames.length - 1) { if (since > 350) show(i + 1); } else if (since > 1000) close();
+        }
       });
       show(0);
     });

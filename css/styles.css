@@ -378,3 +378,29 @@ table.grid td { width: 54px; height: 54px; border: 2px solid #b0bec5; text-align
 .snode.green { background: #c8e6c9; color: #1b5e20; }
 .snode.orange { background: #ffe0b2; color: #e65100; }
 .snode.red { background: #ffcdd2; color: #b71c1c; font-weight: 700; }
+
+/* ---------- Installeer die app? ---------- */
+.installbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; text-align: left; background: #e3f2fd; border: 2px solid #90caf9; border-radius: 18px; padding: 12px 14px; margin: 18px auto 0; max-width: 560px; }
+.installbar.ok { background: #e8f5e9; border-color: #a5d6a7; }
+.installbar .ib-ic { font-size: 30px; line-height: 1; }
+.installbar .ib-t { flex: 1 1 200px; display: flex; flex-direction: column; gap: 2px; font-size: 18px; }
+.installbar .ib-t small { font-size: 15px; color: var(--muted); line-height: 1.35; }
+.installbar .ib-b { display: flex; gap: 8px; margin-left: auto; }
+.installbar .btn.ghost { border-width: 2px; }
+.shareic { vertical-align: -3px; color: var(--blue); }
+.muted { color: var(--muted); }
+
+/* ---------- Help om die app te verbeter ---------- */
+.wsrow { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 12px auto 0; max-width: 100%; }
+.wsrow .wsline { margin: 0; min-width: 0; }
+.wsnote { flex: none; border: 0; background: #fff; border-radius: 999px; width: 34px; height: 30px; font-size: 16px; opacity: .75; cursor: pointer; }
+.wsnote:active { opacity: 1; }
+.notebox { max-width: 520px; width: 100%; text-align: left; font-size: 17px; font-weight: 400; max-height: calc(100vh - 32px); overflow-y: auto; }
+.notebox h2 { margin: 0 0 6px; font-size: 22px; }
+.notebox .nb-lead { margin: 0 0 10px; line-height: 1.4; }
+.notebox .nb-q { margin: 0 0 10px; font-size: 15px; color: var(--muted); background: var(--sky); border-radius: 12px; padding: 8px 10px; }
+.notebox textarea { width: 100%; font: inherit; font-size: 18px; padding: 10px 12px; border-radius: 14px; border: 3px solid var(--line); resize: vertical; background: #fff; color: var(--ink); }
+.notebox textarea:focus { outline: none; border-color: var(--blue); }
+.notebox .privacy { font-size: 15px; line-height: 1.4; background: #fff8e1; border: 2px solid #ffe082; border-radius: 12px; padding: 8px 10px; margin: 10px 0 0; }
+.notebox .nb-warn { font-size: 15px; color: #b71c1c; background: #ffebee; border-radius: 12px; padding: 8px 10px; margin: 10px 0 0; }
+.notebox .row { justify-content: flex-end; }

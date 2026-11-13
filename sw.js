@@ -1,11 +1,11 @@
 /* Diensbode: hou die app vanlyn beskikbaar nadat dit een keer gelaai is. */
-var CACHE = 'wiskunde-gr1-v3';
+var CACHE = 'wiskunde-gr1-v4';
 var AUDIO = 'wiskunde-gr1-audio-v1'; // stemgrepies verander nooit (die naam is 'n hash van die teks)
 var SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/styles.css',
   'js/util.js', 'js/af.js', 'js/visuals.js', 'js/gen-number.js', 'js/gen-ops.js', 'js/gen-measure.js',
   'js/gen-space.js', 'js/gen-money-data.js', 'js/curriculum.js', 'js/tutor-data.js', 'js/tutor-lessons.js',
-  'js/store.js', 'js/audio.js', 'js/trace.js', 'js/tutor.js', 'js/app.js',
+  'js/store.js', 'js/audio.js', 'js/trace.js', 'js/tutor.js', 'js/install.js', 'js/notes.js', 'js/app.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'
 ];
 

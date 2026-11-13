@@ -366,12 +366,22 @@ W.LESSONS = (function () {
     var d = q.data || {}, nums;
     if (misId === 'telaan-begin' && (nums = addends(gen, d))) {
       var big = Math.max(nums[0], nums[1]), small = Math.min(nums[0], nums[1]);
-      if (small <= 12) return hopLesson(big, small, false, intro, nums[0] + ' plus ' + nums[1] + ' is ' + (nums[0] + nums[1]) + '.');
+      if (small <= 12) return withIntro(hopLesson(big, small, false, null, nums[0] + ' plus ' + nums[1] + ' is ' + (nums[0] + nums[1]) + '.'), intro);
     }
     if (misId === 'telterug-begin' && (nums = takeAway(gen, d)) && nums[1] <= 12) {
-      return hopLesson(nums[0], nums[1], true, intro);
+      return withIntro(hopLesson(nums[0], nums[1], true, null), intro);
     }
     return L[gen](q, intro);
   };
+  /* Die intro (bv. "Kyk hoe ek 'n soortgelyke een doen" of die fout se sin) kom as 'n eie eerste raam,
+     sodat die les se eie eerste sin, wat die som stel, nie verlore gaan nie. */
+  function withIntro(frames, intro) {
+    return intro && frames.length ? [F(frames[0].html, intro)].concat(frames) : frames;
+  }
+  Object.keys(L).forEach(function (k) {
+    if (k === 'forMistake') return;
+    var build = L[k];
+    L[k] = function (q, intro) { return withIntro(build(q), intro); };
+  });
   return L;
 })();

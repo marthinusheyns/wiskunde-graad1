@@ -7,7 +7,8 @@
   var sess = null, timer = null;
   var SPONSOR = '<p class="sponsor">Geborg deur <a href="https://www.heynstech.com/" target="_blank" rel="noopener">Heynstech</a></p>';
   var DISCLAIMER = 'Hierdie app is gratis en is nie geaffilieer met die Departement van Basiese Onderwys nie. ' +
-    'Privaatheid: die app samel geen inligting in nie: geen advertensies en geen aanmelding nie. Vordering bly net op hierdie toestel.';
+    'Privaatheid: geen advertensies en geen aanmelding nie, en die app samel self niks in nie. Vordering bly net op hierdie toestel. ' +
+    'Net ’n nota wat jy self stuur (“Help om die app te verbeter”), gaan na ons toe, sonder jou kind se naam.';
   var esc = U.esc;
 
   function render(html, cls) {
@@ -25,6 +26,13 @@
     }).join('') + '</div>';
   }
 
+  /* "Installeer die app?": die strook verskyn sodra Chrome gereed is (sien js/install.js) */
+  function installSlot() { return '<div id="installSlot">' + W.Install.banner() + '</div>'; }
+  W.Install.onChange(function () {
+    var el = document.getElementById('installSlot'); if (el) el.innerHTML = W.Install.banner();
+    var pn = document.getElementById('installPanel'); if (pn) pn.innerHTML = W.Install.panel();
+  });
+
   /* ============ Spelers ============ */
   function showProfiles() {
     var ps = S.profiles();
@@ -37,12 +45,12 @@
           '<small>' + S.totalStars(p.id) + ' ★</small></button>';
       }).join('') +
       '<button class="person add" data-act="newProfile"><span class="av">＋</span><span>Nuwe speler</span></button></div>' +
-      strip() + SPONSOR + '</div>', 'bg-home');
+      installSlot() + strip() + SPONSOR + '</div>', 'bg-home');
   }
   function showNewProfile(first) {
     render('<div class="page center">' +
       '<h1 class="logo">Wiskunde <span>Graad 1</span></h1>' +
-      (first ? '<p class="lead">Welkom! Hierdie app help jou om <b>Wiskunde in Afrikaans, Graad 1</b> (Boek 1 en 2) te oefen.</p>' : '') +
+      (first ? '<p class="lead">Welkom! Hierdie app help jou om <b>Wiskunde in Afrikaans, Graad 1</b> (Boek 1 en 2) te oefen.</p>' + installSlot() : '') +
       '<h2>Wat is jou naam?</h2>' +
       '<input id="pname" class="namein" maxlength="20" autocomplete="off" placeholder="Naam">' +
       '<h2>Kies jou prentjie</h2>' +
@@ -94,7 +102,7 @@
       '<span class="nb">' + nx.id + '</span><span class="nt"><small>Speel volgende</small>' + esc(nx.title) + '</span><span class="play">▶</span></button>' +
       '<div class="books">' + bookCard(1, b1, '1 & 2') + bookCard(2, b2, '3 & 4') + '</div>' +
       '<button class="btn wide review" data-act="review">🔁 Hersiening: oefen gemengde vrae</button>' +
-      strip() + SPONSOR + '</div>', 'bg-home');
+      installSlot() + strip() + SPONSOR + '</div>', 'bg-home');
   }
 
   /* ============ Boek ============ */
@@ -183,7 +191,8 @@
     render('<div class="play">' +
       '<div class="topbar"><button class="icon" data-act="quit">✕</button><div class="dots">' + dots() + '</div>' +
       (W.Voice.available() ? '<button class="icon" data-act="speak">🔊</button>' : '<span class="icon"></span>') + '</div>' +
-      '<div class="wsline" style="--c:' + TERM_COL[ws.term] + '"><b>' + ws.id + '</b> ' + esc(ws.title) + '</div>' +
+      '<div class="wsrow"><div class="wsline" style="--c:' + TERM_COL[ws.term] + '"><b>' + ws.id + '</b> ' + esc(ws.title) + '</div>' +
+      '<button class="wsnote" data-act="note" aria-label="Help om die app te verbeter" title="Help om die app te verbeter">💬</button></div>' +
       '<div class="prompt">' + esc(q.prompt) + '</div>' +
       (W.Tutor.hasLesson(it.gen) ? '<div class="helprow"><button class="helpbtn" data-act="showme">💡 Wys my hoe</button></div>' : '') +
       (q.visual ? '<div class="visual">' + q.visual + '</div>' : '') +
@@ -192,7 +201,7 @@
     renderInput();
     if (S.settings().autoSpeak) setTimeout(speakQ, 250);
   }
-  function speakQ() { if (sess && sess.q) W.Voice.speak(sess.q.say || sess.q.prompt); }
+  function speakQ() { if (sess && sess.q && !document.querySelector('.tutor-ov')) W.Voice.speak(sess.q.say || sess.q.prompt); }
 
   function renderInput() {
     var q = sess.q, inp = q.input, el = document.getElementById('answer');
@@ -244,6 +253,7 @@
   /* value: die gekose/getikte antwoord, sodat die tutor 'n bekende fout kan herken */
   function result(ok, value) {
     if (sess.locked) return;
+    clearTimeout(timer); // 'n wenk se wegsteek-tydhouer mag nie die "Volgende"-strook van die tweede fout wegsteek nie
     var q = sess.q, it = sess.items[sess.i], path = W.Tutor.path(it.gen, q);
     if (ok) {
       sess.locked = true;
@@ -261,7 +271,10 @@
     sess.attempts++;
     W.Sfx.bad();
     var misId = value != null && q.mis ? q.mis[String(value)] : null;
-    if (misId) { sess.misSeen.push(misId); S.recordMis(misId, W.Tutor.misNode(misId, path)); }
+    if (misId) {
+      if (sess.misSeen.indexOf(misId) < 0) S.recordMis(misId, W.Tutor.misNode(misId, path)); // een keer per vraag
+      sess.misSeen.push(misId);
+    }
     if (sess.attempts >= 2) {
       sess.locked = true;
       if (it.scored) S.recordAnswer(q.skill, false);
@@ -401,6 +414,11 @@
       (weak.length ? '<section><h2>Werkblaaie om weer te oefen</h2><div class="weak">' + weak.map(function (w) {
         return '<button class="chip" style="--c:' + TERM_COL[w.term] + '" data-act="intro" data-id="' + w.id + '"><b>' + w.id + '</b> ' + esc(w.title) + ' ' + starStr(d.ws[w.id].best) + '</button>';
       }).join('') + '</div></section>' : '') +
+      '<section><h2>💬 Help om die app te verbeter</h2><p class="note">Sien jy ’n fout, klink ’n woord verkeerd, of het jy ’n idee? Stuur vir ons ’n kort nota. ' +
+      'Op ’n vraag self is daar ook ’n 💬-knoppie wat die vraag saamstuur. Moenie persoonlike inligting in die nota sit nie.</p>' +
+      '<button class="btn small" data-act="note">Skryf ’n nota</button>' +
+      (W.Notes.waiting() ? ' <small class="muted">' + W.Notes.waiting() + ' nota(s) wag vir internet</small>' : '') + '</section>' +
+      '<section><h2>📲 Installeer die app</h2><div id="installPanel">' + W.Install.panel() + '</div></section>' +
       '<section><h2>Instellings</h2>' +
       '<label class="set">Vrae per werkblad <select id="qc">' + [5, 8, 10, 12].map(function (n) { return '<option' + (n === st.qCount ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></label>' +
       '<label class="set"><input type="checkbox" id="as"' + (st.autoSpeak ? ' checked' : '') + '> Lees elke vraag outomaties hardop</label>' +
@@ -412,7 +430,7 @@
       '<button class="btn small danger" data-act="delP">Verwyder speler</button></div></section>' +
       '<section><h2>Oor hierdie app</h2><p class="note">Gebou rondom die DBO se Reënboog-werkboeke <i>Wiskunde in Afrikaans, Graad 1</i>: Boek 1 (Kwartaal 1 en 2, werkblaaie 1 – 64) en Boek 2 (Kwartaal 3 en 4, werkblaaie 65 – 128). ' +
       'Elke werkblad in die app het dieselfde nommer as in die boek en oefen dieselfde vaardighede met nuwe vrae elke keer. Drie sterre beteken die kind het 90% of meer met die eerste probeerslag reg gehad. ' +
-      'Verkeerde antwoorde kry eers ’n wenk; ná ’n tweede fout wys die app die antwoord en kom later met ’n soortgelyke vraag terug. Vordering word net op hierdie toestel gestoor.</p>' +
+      'Verkeerde antwoorde kry eers ’n wenk; ná ’n tweede fout wys die app die antwoord en kom later met ’n soortgelyke vraag terug. Vordering word net op hierdie toestel gestoor. Weergawe ' + W.VERSION + '.</p>' +
       '<p class="note">' + DISCLAIMER + '</p>' + SPONSOR + '</section>' +
       '</div>', 'bg-book');
     document.getElementById('qc').addEventListener('change', function (e) { S.setSetting('qCount', +e.target.value); });
@@ -486,9 +504,9 @@
       if (sess.locked) return;
       var it = sess.items[sess.i], q = sess.q, q2 = null;
       // 'n Soortgelyke vraag, sodat die antwoord nie weggegee word nie
-      for (var k = 0; k < 12; k++) {
+      for (var k = 0; k < 30; k++) {
         q2 = W.G[it.gen](it.p);
-        if (String(q2.input.answer) !== String(q.input.answer) && q2.prompt !== q.prompt) break;
+        if (String(q2.input.answer) !== String(q.input.answer)) break;
       }
       sess.helped = true;
       W.Tutor.play(W.LESSONS[it.gen](q2, W.AF.PHRASES.showme), { done: W.AF.PHRASES.yourTurn }).then(function () {
@@ -583,6 +601,21 @@
       setTimeout(function () { if (sess && sess.tracer && !sess.locked) sess.tracer.clear(); }, 600);
     },
     testVoice: function () { W.Voice.speak(W.AF.PHRASES.test); },
+    install: function () { W.Install.prompt(); },
+    installLater: function () { W.Install.later(); },
+    note: function () {
+      var ctx = null;
+      if (sess && sess.q && document.querySelector('.play')) {
+        var it = sess.items[sess.i], q = sess.q, inp = q.input;
+        ctx = {
+          ws: it.ws, title: byId(it.ws).title, n: (sess.i + 1) + '/' + sess.items.length, review: sess.review || undefined,
+          gen: it.gen, p: it.p, prompt: String(q.prompt).slice(0, 300), kind: inp.kind, answer: inp.answer,
+          options: inp.options ? inp.options.map(function (o) { return o.label != null ? String(o.label) : String(o.value); }) : undefined,
+          attempts: sess.attempts
+        };
+      }
+      W.Notes.open(ctx);
+    },
     voiceDownload: function (d, el) {
       el.disabled = true;
       W.Voice.downloadAll(function (done, total) { el.textContent = 'Laai af… ' + Math.round(100 * done / total) + '%'; })
@@ -609,7 +642,7 @@
     if (act[name]) act[name](t.dataset, t, e);
   });
   document.addEventListener('keydown', function (e) {
-    if (!sess || !sess.q || document.querySelector('.modal')) return;
+    if (!sess || !sess.q || document.querySelector('.modal, .tutor-ov')) return;
     var inp = sess.q.input;
     if (inp.kind === 'number' && /^[0-9]$/.test(e.key)) act.key({ k: e.key });
     else if (inp.kind === 'number' && e.key === 'Backspace') act.key({ k: 'del' });

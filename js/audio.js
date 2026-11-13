@@ -148,7 +148,7 @@ W.Voice = (function () {
       if (my !== gen) return;
       var t = c.currentTime + 0.05;
       bufs.forEach(function (b, i) {
-        if (!b) return;
+        if (!b) { t += (items[i].p.length * 60 + 150) / 1000; return; } // grepie kon nie laai nie: gee tog leestyd
         var s = c.createBufferSource();
         s.buffer = b; s.connect(c.destination); s.start(t);
         sources.push(s);
