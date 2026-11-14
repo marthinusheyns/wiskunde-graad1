@@ -8,8 +8,9 @@
   var SPONSOR = '<p class="sponsor">Geborg deur <a href="https://www.heynstech.com/" target="_blank" rel="noopener">Heynstech</a>' +
     '<span class="ver"> · Weergawe ' + W.VERSION + '</span></p>';
   var DISCLAIMER = 'Hierdie app is gratis en is nie geaffilieer met die Departement van Basiese Onderwys nie. ' +
-    'Privaatheid: geen advertensies en geen aanmelding nie, en die app samel self niks in nie. Vordering bly net op hierdie toestel. ' +
-    'Net ’n nota wat jy self stuur (“Help om die app te verbeter”), gaan na ons toe, sonder jou kind se naam. ' +
+    'Privaatheid: geen advertensies en geen aanmelding nie. Vordering bly net op hierdie toestel. ' +
+    'Die app stuur net anonieme getalle per dag na ons toe (dat die app vandag gebruik is, en hoeveel vrae, werkblaaie en lesse gedoen is), sonder ’n naam of nommer wat jou toestel of kind uitken. Jy kan dit in die ouerafdeling onder Instellings afskakel. ' +
+    '’n Nota wat jy self stuur (“Help om die app te verbeter”), gaan ook na ons toe, sonder jou kind se naam. ' +
     'Sinne wat nie in die app ingebou is nie (bv. storiesomme), kry die app die eerste keer by ons stembediener: dan gaan net daardie sin se teks soontoe.';
   var esc = U.esc;
 
@@ -281,6 +282,7 @@
   /* value: die gekose/getikte antwoord, sodat die tutor 'n bekende fout kan herken */
   function result(ok, value) {
     if (sess.locked) return;
+    if (sess.attempts === 0) W.Stats.question(); // net getalle, sien js/stats.js
     clearTimeout(timer); // 'n wenk se wegsteek-tydhouer mag nie die "Volgende"-strook van die tweede fout wegsteek nie
     sess.fbTok++;
     var q = sess.q, it = sess.items[sess.i], path = W.Tutor.path(it.gen, q);
@@ -362,6 +364,7 @@
   function finish() {
     var ws = sess.ws, n = sess.scoredN, ft = sess.ft, stars;
     S.endSession(Object.keys(sess.touched));
+    W.Stats.worksheet();
     if (sess.review) stars = S.starsFor(ft, n);
     else stars = S.recordSession(ws.id, ft, n);
     W.Sfx.win();
@@ -471,6 +474,7 @@
       '<label class="set">Vrae per werkblad <select id="qc">' + [5, 8, 10, 12].map(function (n) { return '<option' + (n === st.qCount ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></label>' +
       '<label class="set"><input type="checkbox" id="as"' + (st.autoSpeak ? ' checked' : '') + '> Lees elke vraag outomaties hardop</label>' +
       '<label class="set"><input type="checkbox" id="snd"' + (st.sound !== false ? ' checked' : '') + '> Klankeffekte</label>' +
+      '<label class="set"><input type="checkbox" id="stt"' + (st.stats !== false ? ' checked' : '') + '> Stuur anonieme getalle (hoeveel vrae per dag; geen name nie)</label>' +
       '<p class="note">' + voiceTxt + '</p></section>' +
       '<section><h2>Speler</h2><div class="row wrap">' +
       '<button class="btn small" data-act="rename">Verander naam</button>' +
@@ -484,6 +488,7 @@
     document.getElementById('qc').addEventListener('change', function (e) { S.setSetting('qCount', +e.target.value); });
     document.getElementById('as').addEventListener('change', function (e) { S.setSetting('autoSpeak', e.target.checked); });
     document.getElementById('snd').addEventListener('change', function (e) { S.setSetting('sound', e.target.checked); });
+    document.getElementById('stt').addEventListener('change', function (e) { S.setSetting('stats', e.target.checked); if (!e.target.checked) W.Stats.off(); });
   }
 
   /* "Waar sukkel ...?": wortelgapings, herhaalde foute (met wenke vir tuis) en die vaardigheidskaart */
@@ -715,6 +720,7 @@
   // Begin
   W.Voice.load();
   W.Voice.wake();
+  W.Stats.start();
   if (S.current()) showHome(); else showProfiles();
 
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {

@@ -306,7 +306,7 @@ table.grid td { width: 54px; height: 54px; border: 2px solid #b0bec5; text-align
 .chip { background: #fafafa; border-left: 6px solid var(--c); border-radius: 12px; padding: 8px 12px; font-size: 16px; text-align: left; box-shadow: var(--shadow); }
 .chip .st { font-size: 15px; }
 .set { display: flex; align-items: center; gap: 10px; margin: 10px 0; font-size: 18px; }
-.set input[type=checkbox] { width: 24px; height: 24px; }
+.set input[type=checkbox] { width: 24px; height: 24px; flex: none; }
 .set select { font-size: 18px; padding: 4px 8px; border-radius: 8px; }
 .gateq { font-size: 34px; font-weight: 700; }
 

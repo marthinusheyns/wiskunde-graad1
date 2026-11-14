@@ -11,6 +11,7 @@ W.Tutor = W.Tutor || {};
   /* Speel rame. opts.done: teks op die laaste knoppie. Gee 'n Promise terug wat klaar is as die les toemaak. */
   T.play = function (frames, opts) {
     opts = opts || {};
+    if (W.Stats) W.Stats.lesson();
     W.Voice.prefetch(frames.map(function (f) { return f.say; })); // bv. die storie wat die les voorlees
     return new Promise(function (resolve) {
       var i = 0, playing = true, token = 0, closed = false, shownAt = 0;

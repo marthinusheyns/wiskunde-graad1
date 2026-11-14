@@ -2,8 +2,8 @@
   "name": "wiskunde-stem",
   "version": "1.0.0",
   "private": true,
-  "description": "Stembediener vir die Wiskunde-app: se sinne met die Azure-stem en stoor dit (sien src/say.js).",
-  "main": "src/say.js",
+  "description": "Bediener vir die Wiskunde-app: die stem (src/say.js) en gebruikstellings sonder ID (src/tel.js).",
+  "main": "src/index.js",
   "dependencies": {
     "@azure/functions": "^4.6.0",
     "lamejs": "^1.2.1",

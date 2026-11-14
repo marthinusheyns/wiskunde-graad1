@@ -3,7 +3,7 @@ var W = window.W || (window.W = {});
 
 W.Store = (function () {
   var KEY = 'wiskunde-gr1-v1';
-  var DEFAULT_SETTINGS = { qCount: 8, sound: true, autoSpeak: true };
+  var DEFAULT_SETTINGS = { qCount: 8, sound: true, autoSpeak: true, stats: true };
   var state = load();
 
   function load() {
