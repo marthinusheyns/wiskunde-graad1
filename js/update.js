@@ -21,7 +21,8 @@ W.Update = (function () {
   function check() {
     if (shown || navigator.onLine === false || Date.now() - last < 60000 || busy()) return;
     last = Date.now();
-    fetch('js/util.js', { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
+    // Met 'n unieke adres: anders kan GitHub Pages se CDN 'n ou util.js gee (dit hou lêers tot 10 minute)
+    fetch('js/util.js?t=' + Date.now(), { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (t) {
       var m = /W\.VERSION\s*=\s*'([\d.]+)'/.exec(t);
       if (m && newer(m[1], W.VERSION) && !busy()) bar(m[1]);
     }).catch(function () { });
@@ -36,7 +37,10 @@ W.Update = (function () {
       '<button class="btn small go" data-u="go">Laai dit</button><button class="icon" data-u="no" aria-label="Later">✕</button>';
     d.addEventListener('click', function (e) {
       var u = e.target.getAttribute('data-u');
-      if (u === 'go') location.reload();
+      // Laai die nuwe weergawe met die weergawe in die adres: die diensbode vra dan elke lêer as js/app.js?v=…, wat
+      // die CDN nog nie het nie, so alles kom vars en uit dieselfde weergawe (sien sw.js). 'n Gewone herlaai kon
+      // nog 'n ou app.js uit die CDN kry, sodat 'n mens moes aftrek om te herlaai.
+      if (u === 'go') location.replace(location.pathname + '?v=' + encodeURIComponent(v) + location.hash);
       else if (u === 'no') d.remove();
     });
     document.body.appendChild(d);

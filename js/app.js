@@ -32,7 +32,7 @@
      hoogstens een per tik, en nooit wanneer terug gedruk is nie. Die app se eie ⬅- en 🏠-knoppies stap
      terug deur die geskiedenis in plaas daarvan om stappe by te voeg, sodat die twee nooit uit pas raak nie. */
   var Nav = W.Nav = (function () {
-    var tapN = 0, pushN = 0, self = null, then = null, inBack = false;
+    var tapN = 0, pushN = 0, self = null, then = null, inBack = false, last = 0;
     document.addEventListener('click', function () { tapN++; }, true);
     document.addEventListener('keydown', function (e) { if (!e.repeat && e.key !== 'Escape') tapN++; }, true);
     function st() { var x = history.state; return x && x.wg ? x : null; }
@@ -47,9 +47,11 @@
         if (push) { history.pushState({ wg: v, nav: depth() + 1 }, ''); pushN = tapN; }
         else history.replaceState({ wg: v, nav: depth() }, '');
       } catch (e) { }
+      last = depth();
     }
     return {
       st: st, depth: depth,
+      was: function () { return last; }, seen: function () { last = depth(); },
       inBack: function () { return inBack; },
       /* fn hanteer 'n terug-druk: skerms vervang dan net die huidige stap */
       during: function (fn) { inBack = true; try { fn(); } finally { inBack = false; } },
@@ -87,15 +89,18 @@
   })();
 
   /* Wys die skerm van 'n stap in die geskiedenis (ná terug) */
-  function showState(v) {
+  function showState(v, fwd) {
     v = v || { v: 'home' };
     sess = null;
+    var guarded = S.current() && (fwd ? /^(profiles|newProfile)$/.test(v.v) : false); // vorentoe (blaaier) na die spelerlys: vra weer
     Nav.during(function () {
       if (v.v === 'book') showBook(v.b, v.t);
       else if ((v.v === 'intro' || v.v === 'play' || v.v === 'results') && v.id && byId(v.id)) showIntro(v.id);
+      else if (guarded) showGate('profiles');
       else if (v.v === 'profiles' || v.v === 'first') showProfiles();
       else if (v.v === 'newProfile') showNewProfile(false);
-      else if (v.v === 'gate' || v.v === 'parents') showGate();
+      else if (v.v === 'gate') showGate(v.to);
+      else if (v.v === 'parents') showGate('parents');
       else showHome();
     });
   }
@@ -103,8 +108,11 @@
 
   window.addEventListener('popstate', function (e) {
     var v = e.state && e.state.wg ? e.state.wg : null, mine = Nav.take();
+    var fwd = (e.state && e.state.wg ? e.state.nav : 0) > Nav.was(); // vorentoe in die geskiedenis (nie terug nie)
+    Nav.seen();
     if (mine.self === 'ov') { if (mine.then) mine.then(); return; } // 'n les/venster het self toegegaan
     if (mine.self === 'screen') return showState(v);                 // die app se eie ⬅ of 🏠
+    if (fwd) return showState(v, true);
     // Die kind het terug gedruk. Eers: 'n venster of les wat oop is
     var mods = document.querySelectorAll('.modal'), top = mods[mods.length - 1] || document.querySelector('.tutor-ov');
     if (top) {
@@ -558,16 +566,19 @@
   }
 
   /* ============ Ouerhoek ============ */
-  function showGate() {
+  /* Net vir grootmense: 'n maalsom wat 'n Graad 1-kind nie kan doen nie. to: 'parents' (Ouerhoek) of 'profiles'
+     (wissel speler, sodat 'n kind nie maklik op 'n ander speler se naam speel nie). */
+  function showGate(to) {
+    to = to === 'profiles' ? 'profiles' : 'parents';
     var a = U.rnd(6, 9), b = U.rnd(6, 9);
     sess = null;
     render('<div class="page center"><header class="hbar"><button class="icon" data-act="up">⬅</button><span></span></header>' +
-      '<h1>Ouerhoek</h1><p class="lead">Vir ouers en onderwysers. Beantwoord om voort te gaan:</p>' +
+      '<h1>' + (to === 'profiles' ? 'Wissel speler' : 'Ouerhoek') + '</h1><p class="lead">Vir ouers en onderwysers. Beantwoord om voort te gaan:</p>' +
       '<p class="gateq">' + a + ' × ' + b + ' = <input id="gate" type="number" inputmode="numeric" class="namein short"></p>' +
-      '<button class="btn go" data-act="gate" data-a="' + (a * b) + '">Gaan voort</button></div>', 'bg-book');
-    Nav.here({ v: 'gate' });
+      '<button class="btn go" data-act="gate" data-a="' + (a * b) + '" data-to="' + to + '">Gaan voort</button></div>', 'bg-book');
+    Nav.here({ v: 'gate', to: to });
     var g = document.getElementById('gate'); g.focus();
-    g.addEventListener('keydown', function (e) { if (e.key === 'Enter') act.gate({ a: String(a * b) }); });
+    g.addEventListener('keydown', function (e) { if (e.key === 'Enter') act.gate({ a: String(a * b), to: to }); });
   }
   function showParents() {
     var p = S.current(), d = S.data(), st = S.settings();
@@ -687,7 +698,7 @@
   var act = {
     pick: function (d) { S.setCurrent(d.id); goHome(); },
     newProfile: function () { showNewProfile(false); },
-    profiles: function () { showProfiles(); },
+    profiles: function () { showGate('profiles'); }, // die naam bo-aan die tuisskerm: eers die grootmensvraag
     av: function (d, el) { document.querySelectorAll('.avpick').forEach(function (b) { b.classList.remove('on'); }); el.classList.add('on'); },
     saveProfile: function () {
       var name = (document.getElementById('pname').value || '').trim();
@@ -703,11 +714,11 @@
     intro: function (d) { sess = null; showIntro(d.id); },
     start: function (d) { W.Sfx.tap(); startSession(byId(d.id)); },
     review: function () { startReview(); },
-    parents: function () { showGate(); },
+    parents: function () { showGate('parents'); },
     gate: function (d) {
       var v = document.getElementById('gate').value;
-      if (String(v).trim() === String(d.a)) showParents();
-      else document.getElementById('gate').classList.add('shake');
+      if (String(v).trim() !== String(d.a)) return document.getElementById('gate').classList.add('shake');
+      if (d.to === 'profiles') showProfiles(); else showParents();
     },
     speak: function () {
       // Terwyl 'n wenk-strook wys, herhaal 🔊 die wenk; anders die vraag

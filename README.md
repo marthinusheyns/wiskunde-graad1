@@ -37,6 +37,8 @@ often as needed.
   workbook worksheets are titled "Hersiening: …"): a mix of what the child already knows. It only uses worksheets played
   to the end with at least 2 stars (70% right on the first try), and those not played for a while
   come up more often. Worksheets with 1 star stay out; the parents' section lists them to play again.
+- **Switching players** (tap the name on the home screen) asks the same grown-up times-table question as
+  the Ouerhoek, so a child can't easily play on someone else's profile.
 - **Ouerhoek** (parents' section, behind a simple times-table question): progress per term,
   accuracy per skill (flags "Oefen nog" under 70%), the list of worksheets to redo, settings, and
   player management.
@@ -66,7 +68,7 @@ It is a static web app with no build step and no dependencies.
   its own **"Installeer die app?"** bar (`js/install.js`, using Chrome's `beforeinstallprompt`); on
   iPhone/iPad it explains Share → Add to Home Screen. The parents' section always has the steps.
   It installs like an app and works offline: `sw.js` caches everything.
-- **Releasing:** bump `W.VERSION` in `js/util.js` and `CACHE` in `sw.js` together. The version is
+- **Releasing:** bump `W.VERSION` in `js/util.js` and `VERSION` in `sw.js` together (the cache name follows `VERSION`). The version is
   shown at the bottom of the first screens ("Weergawe 1.4") and in the parents' section, and sent
   with every note, so you know which build a note is about.
 - **Back button** (phone or browser): stays in the app. Every screen, lesson or pop-up that the child
@@ -82,6 +84,12 @@ It is a static web app with no build step and no dependencies.
   when the app comes back to the front, and when the home screen is shown. If there is a newer
   version, it shows a bar: *"Nuwe weergawe … is gereed. Laai dit"*. It doesn't show while a child is
   busy with a worksheet. Offline, the phone keeps the version it has until it is online again.
+- **GitHub Pages' CDN** keeps each file for up to 10 minutes, and each file expires at its own time, so
+  right after a release "Laai dit" could get the new `util.js` but an old `app.js`. So "Laai dit" opens
+  `./?v=<new version>`, and the service worker asks for every file of the app with the version in its
+  address (`js/app.js?v=1.15`, taken from the page address, or else from `VERSION` in `sw.js`). Each
+  version's addresses are new to the CDN, so the files come fresh from GitHub and all from the same
+  version. The update check itself asks for `js/util.js?t=<time>` for the same reason.
 
 Progress is stored in the browser's `localStorage` on that device only.
 

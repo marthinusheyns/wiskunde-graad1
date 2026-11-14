@@ -1,5 +1,6 @@
 /* Diensbode: hou die app vanlyn beskikbaar nadat dit een keer gelaai is. */
-var CACHE = 'wiskunde-gr1-v17';
+var VERSION = '1.15'; // = W.VERSION in js/util.js: verhoog altwee by elke uitgawe
+var CACHE = 'wiskunde-gr1-' + VERSION;
 var AUDIO = 'wiskunde-gr1-audio-v1'; // stemgrepies verander nooit (die naam is 'n hash van die teks)
 var SHELL = [
   './', 'index.html', 'manifest.webmanifest', 'css/styles.css',
@@ -9,8 +10,24 @@ var SHELL = [
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'
 ];
 
+/* GitHub Pages se CDN hou elke lêer tot 10 minute lank, en elkeen verval op 'n ander tyd. Net ná 'n uitgawe kon
+   "Laai dit" dus 'n nuwe util.js maar 'n ou app.js kry. Daarom vra ons ons eie lêers met die weergawe in die adres
+   (js/app.js?v=1.15): elke weergawe het eie adresse, wat die CDN nog nie het nie, so dit kom vars van die bediener.
+   Die weergawe kom van die bladsy se adres (ná "Laai dit": ./?v=1.15, sien js/update.js), anders van hierdie lêer. */
+function versioned(path, v) { return path + (path.indexOf('?') < 0 ? '?' : '&') + 'v=' + encodeURIComponent(v); }
+function pageVersion(req) {
+  try { return new URL(req.referrer).searchParams.get('v') || VERSION; } catch (e) { return VERSION; }
+}
+
 self.addEventListener('install', function (e) {
-  e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }).then(function () { return self.skipWaiting(); }));
+  e.waitUntil(caches.open(CACHE).then(function (c) {
+    return Promise.all(SHELL.map(function (f) {
+      return fetch(new Request(versioned(f, VERSION), { cache: 'no-cache' })).then(function (res) {
+        if (!res.ok) throw new Error(f);
+        return c.put(f, res);
+      });
+    }));
+  }).then(function () { return self.skipWaiting(); }));
 });
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (keys) {
@@ -34,8 +51,10 @@ self.addEventListener('fetch', function (e) {
   }
   // Netwerk eerste vir ons eie lêers (sodat opdaterings deurkom), kas as daar geen netwerk is nie.
   // 'no-cache': vra die bediener elke keer of 'n lêer verander het (goedkoop, meestal "304 onveranderd"),
-  // anders kan die blaaier 'n ou lêer tot 10 minute lank uit sy eie kas gee.
-  var fresh = url.origin === location.origin && e.request.mode !== 'navigate' ? fetch(e.request, { cache: 'no-cache' }) : fetch(e.request);
+  // anders kan die blaaier 'n ou lêer tot 10 minute lank uit sy eie kas gee. Met die weergawe in die adres (sien bo).
+  var own = url.origin === location.origin && e.request.mode !== 'navigate';
+  var fresh = !own ? fetch(e.request)
+    : fetch(new Request(url.search ? url.href : versioned(url.href, pageVersion(e.request)), { cache: 'no-cache', credentials: 'same-origin' }));
   e.respondWith(
     fresh.then(function (res) {
       var copy = res.clone();
