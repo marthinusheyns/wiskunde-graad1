@@ -69,7 +69,7 @@ for (const n of show) {
   const q = n.q || {};
   console.log(`\n── ${clean(n.t).replace('T', ' ').slice(0, 16)} · ${from(n)} · ${clean(n.app)} v${clean(n.v)} · ${clean(n.dev)}`);
   if (n.q) {
-    console.log(`   Werkblad ${clean(q.ws)} ${clean(q.title)} (vraag ${clean(q.n)}, ${clean(q.gen)}${q.review ? ', hersiening' : ''}, ${clean(q.attempts)} keer probeer)`);
+    console.log(`   Werkblad ${clean(q.ws)} ${clean(q.title)} (vraag ${clean(q.n)}, ${clean(q.gen)}${q.review ? ', gemengde oefening' : ''}, ${clean(q.attempts)} keer probeer)`);
     console.log(`   Vraag: “${clean(q.prompt)}”  antwoord: ${clean(JSON.stringify(q.answer))}` +
       (q.options ? `  opsies: ${clean(q.options.join(' | '))}` : ''));
   }

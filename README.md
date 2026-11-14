@@ -30,7 +30,8 @@ often as needed.
   Design: [docs/TUTOR-DESIGN.md](docs/TUTOR-DESIGN.md). Teacher review:
   [docs/SKILL-MAP.md](docs/SKILL-MAP.md) (regenerate with `node tools/skillmap-doc.js`).
 - **"Speel volgende"**: suggests the next worksheet that isn't mastered yet.
-- **Hersiening**: a mixed review of what the child can already do. It only uses worksheets played
+- **Gemengde oefening** (mixed practice; called "Hersiening" before 1.12, renamed because several
+  workbook worksheets are titled "Hersiening: …"): a mix of what the child already knows. It only uses worksheets played
   to the end with at least 2 stars (70% right on the first try), and those not played for a while
   come up more often. Worksheets with 1 star stay out; the parents' section lists them to play again.
 - **Ouerhoek** (parents' section, behind a simple times-table question): progress per term,
@@ -65,6 +66,9 @@ It is a static web app with no build step and no dependencies.
 - **Releasing:** bump `W.VERSION` in `js/util.js` and `CACHE` in `sw.js` together. The version is
   shown at the bottom of the first screens ("Weergawe 1.4") and in the parents' section, and sent
   with every note, so you know which build a note is about.
+- **Back button** (phone or browser): stays in the app. It closes a lesson or pop-up, asks "Wil jy
+  ophou?" during a worksheet, or goes one screen back (the same as the screen's ⬅ button). On the home
+  screen it first says "Druk weer terug om die app toe te maak"; the second press leaves.
 - **How phones get updates:** with internet, the app always loads the newest files. `sw.js` asks the
   server each time whether a file has changed, so it never uses an old copy from the browser's
   cache. Phones often keep the app open in the background for days, so `js/update.js` also checks
@@ -163,28 +167,35 @@ az functionapp deployment source config-zip -g rg-wiskunde-stem -n wiskunde-stem
 
 The app reports how much it is used, without an ID, a name or anything else that could pick out a
 device or a child (`js/stats.js`, server `server/src/tel.js`, endpoint `POST /api/tel` on the same
-Function App):
+Function App). Each device says for itself whether something is a first, and the server only adds
+up those numbers:
 
-- **Once a day** a device sends "opened today" (plus whether it is the first time ever on that
-  device, and whether the app is installed). The number of these per day is the number of devices
-  that day.
-- **After each worksheet**, and when the app goes to the background, it sends how many questions,
-  worksheets and lessons were done since its last report (only the difference), and how many child
-  profiles did their first question that day. Adding these up gives the totals per day. A question
-  counts once, at its first answer.
-- Because there is no ID, devices can only be counted per day: a device used on three days counts
-  once on each of them. There is no "unique visitors this month".
+- **Visitors** (devices that opened the app): once a day a device sends "opened today", with flags for
+  the first time this week, the first time this month and the first time ever, and whether the app is
+  installed. The flags give unique devices per day, per week (ISO week) and per month.
+- **Players** (devices that answered at least one question): the first question of the day, week and
+  month on a device sets the same kind of flags.
+- **Totals:** after each worksheet, and when the app goes to the background, the device sends how many
+  questions, worksheets and lessons were done since its last report (only the difference), and how
+  many child profiles did their first question that day. A question counts once, at its first answer.
+- **Kept playing:** on the day a device reaches its 1st, 2nd, 3rd, 5th, 7th, 10th, 14th, 21st or 30th
+  day of playing, it says so once, with the month of its first visit. So for each month you can see
+  how many new visitors played on at least x days (the conversion from visiting to practising
+  regularly). Devices that had already played before version 1.12 don't send this, so they don't
+  skew it.
 - Offline, the counts wait on the phone (at most 30 days) and go when the internet returns.
 - Parents can switch it off in the parents' section ("Stuur anonieme getalle"). The app's privacy
   text says what is sent.
-- The server checks every number (dates within the last 35 days, sane limits), stores nothing about
-  the request itself (no IP address), and appends one line per report to a file per day in the
-  private container `tel` of `wiskundenotas` (`tel/2026-11-14.jsonl`). It writes with the stored
-  access policy `tel-ac` (add and create only), kept in the app settings `TEL_URL` and `TEL_SAS`.
-- **Read them:** `node tools/stats.js` shows the last 30 days (devices, new devices, installed,
-  children, questions, worksheets, lessons); `--days 90` for longer, `--json` for a spreadsheet or
-  dashboard. It uses the same `tools/notes.local.json` as `tools/notes.js` and downloads to `../tel/`,
-  outside the repo.
+- The server checks every number (dates within the last 35 days, flags 0 or 1, only the listed days
+  of playing), stores nothing about the request itself (no IP address), and appends one line per
+  report to a file per day in the private container `tel` of `wiskundenotas`
+  (`tel/2026-11-14.jsonl`). It writes with the stored access policy `tel-ac` (add and create only),
+  kept in the app settings `TEL_URL` and `TEL_SAS`.
+- **Read them:** `node tools/stats.js` shows visitors, new devices, players, children, questions,
+  worksheets, lessons and installs per day (last 14), per week (last 8) and per month (last 6), and
+  the "kept playing" table per month. `--days 60` for more days, `--json` for a spreadsheet or
+  dashboard. It uses the same `tools/notes.local.json` as `tools/notes.js` and downloads to
+  `../tel/`, outside the repo. Weekly, monthly and "kept playing" counts start at version 1.12.
 
 ### Notes from parents ("Help om die app te verbeter")
 
@@ -271,9 +282,10 @@ http) to see one example of every question type. Add `?g=add,sub` or `?ws=45` to
   titles, page numbers and the skills each worksheet covers. All questions and pictures are
   generated by the app.
 - **Privacy:** there are no accounts, no ads and no tracking. Progress is stored only in the
-  browser on each device. The app sends anonymous counts per day (that the app was used today, and
-  how many questions, worksheets and lessons were done), with no ID or name, and parents can switch
-  that off (see "Usage counts" above). Besides that, only a note a parent or teacher chooses to send
+  browser on each device. The app sends anonymous counts (that the app was used today, or for the
+  first time this week or month; how many questions, worksheets and lessons were done; and on how
+  many days it has been played), with no ID or name, and parents can switch that off (see "Usage
+  counts" above). Besides that, only a note a parent or teacher chooses to send
   ("Help om die app te verbeter") leaves the phone. It contains the note,
   whether the sender is a parent or a teacher, an optional reference they type (initials or a
   code), the worksheet and question if sent from one, the app version and the kind of device

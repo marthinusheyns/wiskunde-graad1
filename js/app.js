@@ -9,7 +9,7 @@
     '<span class="ver"> · Weergawe ' + W.VERSION + '</span></p>';
   var DISCLAIMER = 'Hierdie app is gratis en is nie geaffilieer met die Departement van Basiese Onderwys nie. ' +
     'Privaatheid: geen advertensies en geen aanmelding nie. Vordering bly net op hierdie toestel. ' +
-    'Die app stuur net anonieme getalle per dag na ons toe (dat die app vandag gebruik is, en hoeveel vrae, werkblaaie en lesse gedoen is), sonder ’n naam of nommer wat jou toestel of kind uitken. Jy kan dit in die ouerafdeling onder Instellings afskakel. ' +
+    'Die app stuur net anonieme getalle na ons toe: dat die app vandag (of vir die eerste keer hierdie week of maand) gebruik is, hoeveel vrae, werkblaaie en lesse gedoen is, en op hoeveel dae al gespeel is. Daar is geen naam of nommer by wat jou toestel of kind uitken nie. Jy kan dit in die ouerafdeling onder Instellings afskakel. ' +
     '’n Nota wat jy self stuur (“Help om die app te verbeter”), gaan ook na ons toe, sonder jou kind se naam. ' +
     'Sinne wat nie in die app ingebou is nie (bv. storiesomme), kry die app die eerste keer by ons stembediener: dan gaan net daardie sin se teks soontoe.';
   var esc = U.esc;
@@ -17,10 +17,67 @@
   function render(html, cls) {
     clearTimeout(timer);
     W.Voice.stop();
+    backFn = null; // elke skerm sê self waarheen "terug" gaan (onBack)
+    var tst = document.querySelector('.toast'); if (tst) tst.remove();
     $app.className = cls || '';
     $app.innerHTML = html;
     window.scrollTo(0, 0);
   }
+
+  /* ============ Terug-knoppie (foon en blaaier) ============
+     Die blaaier se "terug" moet in die app bly, nie die app verlaat nie. Ons hou een ekstra stap in die
+     blaaier se geskiedenis. Druk die kind terug, dan doen die app self wat die ⬅/✕-knoppie sou doen:
+     maak 'n venster of les toe, vra "Wil jy ophou?" in 'n werkblad, of gaan een skerm terug. Op die
+     tuisskerm sê dit eers "Druk weer terug om die app toe te maak", en die tweede keer gaan dit wel weg.
+     (Chrome slaan stappe oor wat sonder 'n tik bygevoeg is; daarom voeg ons die stap ook by elke tik by.) */
+  var backFn = null, exitAt = 0;
+  function onBack(fn) { backFn = fn; }
+  function trap() { try { if (!(history.state && history.state.wg1)) history.pushState({ wg1: 1 }, ''); } catch (e) { } }
+  function toast(text) {
+    var t = document.createElement('div');
+    t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = text;
+    document.body.appendChild(t);
+    setTimeout(function () { t.remove(); }, 2600);
+  }
+  window.addEventListener('popstate', function () {
+    var mods = document.querySelectorAll('.modal'), mod = mods[mods.length - 1];
+    var lesson = document.querySelector('.tutor-ov [data-t="close"]');
+    if (mod) { var no = mod.querySelector('[data-m="no"], [data-m="done"]'); if (no) no.click(); else mod.remove(); }
+    else if (lesson) lesson.click();
+    else if (backFn) backFn();
+    else if (sess) act.quit();
+    else if (Date.now() - exitAt < 3000) { // tweede keer op die tuisskerm: laat die app gaan
+      try { if (window.matchMedia('(display-mode: standalone)').matches) window.close(); } catch (e) { }
+      history.back();
+      return;
+    } else { exitAt = Date.now(); toast('Druk weer terug om die app toe te maak.'); }
+    trap();
+  });
+  document.addEventListener('pointerdown', trap, true);
+  document.addEventListener('keydown', trap, true);
+  trap();
+
+  /* "’n" bly by die volgende woord (Afrikaanse setwerk: nooit alleen aan die einde van 'n reël nie).
+     Een plek vir die hele app: elke teks wat op die skerm kom, ook in lesse en vensters. */
+  var LOOSE_N = /(^|[^A-Za-zÀ-ÿ])([’']n) /g;
+  function keepN(t) {
+    var v = t.nodeValue, p = t.parentNode;
+    if (!v || v.indexOf('n ') < 0 || (p && /^(TEXTAREA|SCRIPT|STYLE)$/.test(p.nodeName))) return;
+    var nv = v.replace(LOOSE_N, '$1$2 ');
+    if (nv !== v) t.nodeValue = nv;
+  }
+  function keepNIn(root) {
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), t;
+    while ((t = w.nextNode())) keepN(t);
+  }
+  new MutationObserver(function (ms) {
+    ms.forEach(function (m) {
+      if (m.type === 'characterData') keepN(m.target);
+      else Array.prototype.forEach.call(m.addedNodes, function (x) {
+        if (x.nodeType === 3) keepN(x); else if (x.nodeType === 1) keepNIn(x);
+      });
+    });
+  }).observe(document.body, { childList: true, subtree: true, characterData: true });
   function byId(id) { return CUR.filter(function (w) { return w.id === String(id); })[0]; }
   function starStr(n) { return '<span class="st">' + '★'.repeat(n) + '<i>' + '★'.repeat(3 - n) + '</i></span>'; }
   function strip() {
@@ -49,6 +106,7 @@
       }).join('') +
       '<button class="person add" data-act="newProfile"><span class="av">＋</span><span>Nuwe speler</span></button></div>' +
       installSlot() + strip() + SPONSOR + '</div>', 'bg-home');
+    onBack(S.current() ? showHome : null);
     W.Update.check();
   }
   function showNewProfile(first) {
@@ -62,6 +120,7 @@
       '<button class="btn big go" data-act="saveProfile">Klaar ✓</button>' +
       (first ? '<p class="note fine">' + DISCLAIMER + '</p>' + SPONSOR : '<button class="btn ghost" data-act="profiles">Terug</button>') +
       '</div>', 'bg-home');
+    onBack(first ? null : showProfiles);
     var inp = document.getElementById('pname');
     inp.focus();
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') act.saveProfile(); });
@@ -105,7 +164,7 @@
       '<button class="nextbtn" data-act="intro" data-id="' + nx.id + '" style="--c:' + TERM_COL[nx.term] + '">' +
       '<span class="nb">' + nx.id + '</span><span class="nt"><small>Speel volgende</small>' + esc(nx.title) + '</span><span class="play">▶</span></button>' +
       '<div class="books">' + bookCard(1, b1, '1 & 2') + bookCard(2, b2, '3 & 4') + '</div>' +
-      '<button class="btn wide review" data-act="review">🔁 Hersiening: oefen gemengde vrae</button>' +
+      '<button class="btn wide review" data-act="review">🔁 Gemengde oefening: wat jy al ken</button>' +
       installSlot() + strip() + SPONSOR + '</div>', 'bg-home');
     W.Update.check();
   }
@@ -127,6 +186,7 @@
         return '<button class="tile' + (info ? ' played' : '') + '" style="--c:' + TERM_COL[w.term] + '" data-act="intro" data-id="' + w.id + '">' +
           '<span class="tnum">' + w.id + '</span><span class="ttitle">' + esc(w.title) + '</span>' + starStr(info ? info.best : 0) + '</button>';
       }).join('') + '</div></div>', 'bg-book');
+    onBack(showHome);
   }
 
   function showIntro(id) {
@@ -145,6 +205,7 @@
       '<button class="btn big go" data-act="start" data-id="' + w.id + '">▶ Begin</button>' +
       (w.ex.some(function (e) { return W.Tutor.hasLesson(e[0]); }) ? '<br><button class="btn learn" data-act="learn" data-id="' + w.id + '">🐸 Leer my</button>' : '') +
       '</div>', 'bg-book');
+    onBack(function () { showBook(w.book); });
   }
 
   /* ============ Speel ============ */
@@ -378,28 +439,30 @@
       '<h1>' + msg + '</h1>' +
       '<p class="lead">Jy het <b>' + ft + ' uit ' + n + '</b> die eerste keer reg gehad.</p>' +
       '<div class="col">' +
-      (sess.review ? '<button class="btn big go" data-act="review">🔁 Nog hersiening</button>' :
+      (sess.review ? '<button class="btn big go" data-act="review">🔁 Nog ’n gemengde oefening</button>' :
         stars === 1 || !next ?
           '<button class="btn big go" data-act="start" data-id="' + ws.id + '">↻ Speel weer</button>' +
           (next ? '<button class="btn" data-act="intro" data-id="' + next.id + '">Volgende werkblad ➜</button>' : '') :
           '<button class="btn big go" data-act="intro" data-id="' + next.id + '">Volgende werkblad ➜</button>' +
           '<button class="btn" data-act="start" data-id="' + ws.id + '">↻ Speel weer</button>') +
       '<button class="btn ghost" data-act="home">🏠 Tuis</button></div></div>', 'bg-home');
+    onBack(function () { var b = !sess.review && ws.book; sess = null; if (b) showBook(ws.book, ws.term); else showHome(); });
     W.Voice.speak(msg);
   }
 
-  /* ============ Hersiening ============ */
-  /* Hersiening hou vas wat die kind reeds kan: net werkblaaie wat klaar gespeel is met minstens 2 sterre
+  /* ============ Gemengde oefening (in die kode: review) ============ */
+  /* Nie "Hersiening" nie: so heet party werkblaaie in die boek (bv. werkblad 1). Die gemengde oefening hou vas wat die kind reeds ken: net werkblaaie wat klaar gespeel is met minstens 2 sterre
      (70% reg met die eerste probeerslag). Werkblaaie wat lank laas gespeel is, kom meer gereeld (gespreide
      herhaling). Werkblaaie met 1 ster bly uit; dié speel 'n mens weer self (die ouerhoek wys watter). */
   function startReview() {
     var d = S.data(), played = CUR.filter(function (w) { return d.ws[w.id]; });
     var good = played.filter(function (w) { return d.ws[w.id].best >= 2; });
     if (!good.length) {
-      render('<div class="page center"><h1>Hersiening</h1><p class="lead">' + (played.length ?
-        'Hier oefen ons wat jy al goed kan. Kry eers 2 of 3 sterre op ’n werkblad, dan kom dit in die hersiening.' :
-        'Speel eers ’n paar werkblaaie. Dan maak ons vir jou ’n gemengde oefening van wat jy al goed kan.') + '</p>' +
+      render('<div class="page center"><h1>Gemengde oefening</h1><p class="lead">' + (played.length ?
+        'Hier oefen ons wat jy al goed ken. Kry eers 2 of 3 sterre op ’n werkblad, dan kom dit in die gemengde oefening.' :
+        'Speel eers ’n paar werkblaaie. Dan maak ons vir jou ’n gemengde oefening van wat jy al goed ken.') + '</p>' +
         '<button class="btn big go" data-act="home">🏠 Tuis</button></div>', 'bg-home');
+      onBack(function () { act.home(); });
       return;
     }
     played = good;
@@ -416,7 +479,7 @@
       var w = played[i], e = U.pick(w.ex);
       items.push({ gen: e[0], p: e[1], ws: w.id });
     }
-    startSession({ id: 'hersiening', title: 'Hersiening', term: 1, idx: -1 }, items);
+    startSession({ id: 'hersiening', title: 'Gemengde oefening', term: 1, idx: -1 }, items); // id bly 'hersiening' (notas en ou data)
   }
 
   /* ============ Ouerhoek ============ */
@@ -427,6 +490,7 @@
       '<h1>Ouerhoek</h1><p class="lead">Vir ouers en onderwysers. Beantwoord om voort te gaan:</p>' +
       '<p class="gateq">' + a + ' × ' + b + ' = <input id="gate" type="number" inputmode="numeric" class="namein short"></p>' +
       '<button class="btn go" data-act="gate" data-a="' + (a * b) + '">Gaan voort</button></div>', 'bg-book');
+    onBack(function () { act.home(); });
     var g = document.getElementById('gate'); g.focus();
     g.addEventListener('keydown', function (e) { if (e.key === 'Enter') act.gate({ a: String(a * b) }); });
   }
@@ -474,7 +538,7 @@
       '<label class="set">Vrae per werkblad <select id="qc">' + [5, 8, 10, 12].map(function (n) { return '<option' + (n === st.qCount ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></label>' +
       '<label class="set"><input type="checkbox" id="as"' + (st.autoSpeak ? ' checked' : '') + '> Lees elke vraag outomaties hardop</label>' +
       '<label class="set"><input type="checkbox" id="snd"' + (st.sound !== false ? ' checked' : '') + '> Klankeffekte</label>' +
-      '<label class="set"><input type="checkbox" id="stt"' + (st.stats !== false ? ' checked' : '') + '> Stuur anonieme getalle (hoeveel vrae per dag; geen name nie)</label>' +
+      '<label class="set"><input type="checkbox" id="stt"' + (st.stats !== false ? ' checked' : '') + '> Stuur anonieme getalle (hoe gereeld en hoeveel geoefen word; geen name nie)</label>' +
       '<p class="note">' + voiceTxt + '</p></section>' +
       '<section><h2>Speler</h2><div class="row wrap">' +
       '<button class="btn small" data-act="rename">Verander naam</button>' +
@@ -485,6 +549,7 @@
       'Verkeerde antwoorde kry eers ’n wenk; ná ’n tweede fout wys die app die antwoord en kom later met ’n soortgelyke vraag terug. Vordering word net op hierdie toestel gestoor. Weergawe ' + W.VERSION + '.</p>' +
       '<p class="note">' + DISCLAIMER + '</p>' + SPONSOR + '</section>' +
       '</div>', 'bg-book');
+    onBack(function () { act.home(); });
     document.getElementById('qc').addEventListener('change', function (e) { S.setSetting('qCount', +e.target.value); });
     document.getElementById('as').addEventListener('change', function (e) { S.setSetting('autoSpeak', e.target.checked); });
     document.getElementById('snd').addEventListener('change', function (e) { S.setSetting('sound', e.target.checked); });
