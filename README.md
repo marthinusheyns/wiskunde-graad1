@@ -73,7 +73,9 @@ It is a static web app with no build step and no dependencies.
   with every note, so you know which build a note is about.
 - **Back button** (phone or browser): stays in the app. Every screen, lesson or pop-up that the child
   opens with a tap gets its own step in the browser history, so back goes to the previous screen, closes
-  a lesson or pop-up, or asks "Wil jy ophou?" during a worksheet (back again stops it). On the home
+  a lesson or pop-up, or asks "Wil jy ophou?" during a worksheet (back again stops it). A worksheet's
+  start screen, the questions and the results share one step, so after "Volgende werkblad" a few times
+  back still goes straight to the book (or home), and the start screen has a 🏠 button. On the home
   screen back leaves the app, like other Android apps. Chrome skips history steps that a page adds
   without a tap (and then also skips the page itself, so back leaves the app), so the app only adds a
   step while handling a tap, at most one per tap, and never when back is pressed. The app's own ⬅ and

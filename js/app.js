@@ -60,8 +60,11 @@
         var c = st();
         if (inBack || mode === 'replace' || !c) return put(v, false);
         var from = c.wg.v;
-        // Dieselfde soort skerm (bv. 'n ander kwartaal), of weg van die uitslae, die ouerhek of die eerste skerm: vervang
+        // Dieselfde soort skerm (bv. 'n ander kwartaal), of weg van die uitslae, die ouerhek of die eerste skerm: vervang.
+        // 'n Werkblad se begin-skerm, die speel en die uitslae deel een stap: anders stapel "Volgende werkblad" 'n
+        // stap per werkblad op, en terug gaan dan 39, 38, 37, ... in plaas van na die boek of tuis.
         if (from === v.v || from === 'results' || from === 'gate' || from === 'first') return put(v, false);
+        if (from === 'intro' && v.v === 'play') return put(v, false);
         put(v, canPush());
       },
       /* Sit 'n werkblad se stap terug ná "Nee" (net met 'n tik) */
@@ -83,6 +86,8 @@
       back: function (n, fallback) {
         if (depth() >= n) { self = 'screen'; history.go(-n); } else if (fallback) fallback();
       },
+      /* een stap vorentoe, en wys die skerm daar */
+      fwd: function () { self = 'screen'; history.go(1); },
       /* Vir die popstate-hanteerder: was dit ons eie stap terug? */
       take: function () { var x = { self: self, then: then }; self = null; then = null; return x; }
     };
@@ -116,13 +121,16 @@
     // Die kind het terug gedruk. Eers: 'n venster of les wat oop is
     var mods = document.querySelectorAll('.modal'), top = mods[mods.length - 1] || document.querySelector('.tutor-ov');
     if (top) {
-      var pushed = top.getAttribute('data-nav') === '1', quit = top.hasAttribute('data-quit');
+      var pushed = top.getAttribute('data-nav') === '1', quit = top.getAttribute('data-quit');
       Nav.during(function () {
         var x = top.querySelector('[data-m="no"], [data-m="done"], [data-t="close"]');
         if (x) x.click(); else top.remove();
       });
       if (pushed) return;              // sy eie stap is weg: bly op hierdie skerm
-      if (quit) return showState(v);   // "Wil jy ophou?" en weer terug: stop en gaan terug
+      // "Wil jy ophou?" en weer terug: stop en gaan terug. Het die terug-knoppie self gevra, was die geskiedenis
+      // reeds by die vorige skerm, en hierdie terug het een te ver gegaan: een vorentoe (dis geen nuwe stap nie).
+      if (quit === 'back') { sess = null; return Nav.fwd(); }
+      if (quit) return showState(v);
     }
     if (sess && !sess.over) return quitBox(true); // in 'n werkblad: vra eers (die geskiedenis is reeds een stap terug)
     showState(v);
@@ -277,7 +285,7 @@
       try { skills[W.G[e[0]](e[1]).skill] = 1; } catch (er) { }
     });
     render('<div class="page center">' +
-      '<header class="hbar"><button class="icon" data-act="up">⬅</button><span></span></header>' +
+      '<header class="hbar"><button class="icon" data-act="up">⬅</button><button class="icon" data-act="home" title="Tuis">🏠</button></header>' +
       '<div class="bigbadge" style="--c:' + TERM_COL[w.term] + '">' + w.id + '</div>' +
       '<h1 class="wtitle">' + esc(w.title) + '</h1>' +
       '<p class="meta">Boek ' + w.book + ' · Kwartaal ' + w.term + ' · bladsy ' + w.bl + '</p>' +
@@ -668,14 +676,14 @@
     return html;
   }
 
-  /* quit: dis die "Wil jy ophou?"-vraag (terug-knoppie: weer terug = stop) */
+  /* quit: dis die "Wil jy ophou?"-vraag (terug-knoppie: weer terug = stop); 'back' as die terug-knoppie dit gevra het, anders 'tap' */
   function confirmBox(text, yes, onYes, onNo, quit) {
     var div = document.createElement('div');
     div.className = 'modal';
-    if (quit) div.setAttribute('data-quit', '');
+    if (quit) div.setAttribute('data-quit', quit);
     div.innerHTML = '<div class="mbox"><p>' + esc(text) + '</p><div class="row"><button class="btn ghost" data-m="no">Nee</button><button class="btn go" data-m="yes">' + esc(yes) + '</button></div></div>';
     document.body.appendChild(div);
-    var pushed = Nav.open();
+    var pushed = quit !== 'back' && Nav.open(); // ná terug: geen eie stap nie (nooit 'n stap in die terug-hanteerder nie)
     div.setAttribute('data-nav', pushed ? '1' : '');
     div.addEventListener('click', function (e) {
       var m = e.target.getAttribute('data-m');
@@ -691,7 +699,7 @@
       else Nav.back(1, function () { sess = null; showHome(); }); // die werkblad se stap weg: die vorige skerm
     }, function () {
       if (fromBack && ws) Nav.add({ v: 'play', id: ws.id }); // Nee: sit die werkblad se stap terug
-    }, true);
+    }, fromBack ? 'back' : 'tap');
   }
 
   /* ============ Aksies ============ */

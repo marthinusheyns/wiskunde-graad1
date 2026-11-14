@@ -1,5 +1,5 @@
 /* Diensbode: hou die app vanlyn beskikbaar nadat dit een keer gelaai is. */
-var VERSION = '1.15'; // = W.VERSION in js/util.js: verhoog altwee by elke uitgawe
+var VERSION = '1.16'; // = W.VERSION in js/util.js: verhoog altwee by elke uitgawe
 var CACHE = 'wiskunde-gr1-' + VERSION;
 var AUDIO = 'wiskunde-gr1-audio-v1'; // stemgrepies verander nooit (die naam is 'n hash van die teks)
 var SHELL = [
