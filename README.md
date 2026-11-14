@@ -29,7 +29,10 @@ often as needed.
   skill. The parents' section shows where the child struggles ("Begin hier") with home activities.
   Design: [docs/TUTOR-DESIGN.md](docs/TUTOR-DESIGN.md). Teacher review:
   [docs/SKILL-MAP.md](docs/SKILL-MAP.md) (regenerate with `node tools/skillmap-doc.js`).
-- **"Speel volgende"**: suggests the next worksheet that isn't mastered yet.
+- **Home card**: suggests the next worksheet that isn't mastered yet, and one tap starts it straight
+  away. It says "Begin hier" for a new player, "Gaan hier voort" for the next worksheet, and "Oefen dit
+  weer" when the last one got 1 star. It leaves off "Hersiening:" (workbook worksheets 1-8 start with it,
+  and it looked like the app's mixed practice); the book list and the worksheet keep the full title.
 - **Gemengde oefening** (mixed practice; called "Hersiening" before 1.12, renamed because several
   workbook worksheets are titled "Hersiening: …"): a mix of what the child already knows. It only uses worksheets played
   to the end with at least 2 stars (70% right on the first try), and those not played for a while

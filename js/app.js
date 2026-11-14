@@ -190,6 +190,13 @@
   }
 
   /* ============ Tuis ============ */
+  /* Die kaart se woorde: waarom hierdie werkblad? */
+  function nextLabel(nx) {
+    var d = S.data();
+    if (!d.lastWs) return 'Begin hier';
+    var w = d.ws[nx.id];
+    return nx.id === d.lastWs && w && w.best < 2 ? 'Oefen dit weer' : 'Gaan hier voort';
+  }
   function nextWs() {
     var d = S.data(), last = d.lastWs ? byId(d.lastWs) : null;
     if (!last) return CUR[0];
@@ -224,8 +231,10 @@
       '<span class="total">⭐ ' + S.totalStars() + '</span>' +
       '<button class="icon" data-act="parents" title="Ouerhoek">⚙️</button></header>' +
       '<h1 class="hello">Hallo, ' + esc(p.name) + '!</h1>' +
-      '<button class="nextbtn" data-act="intro" data-id="' + nx.id + '" style="--c:' + TERM_COL[nx.term] + '">' +
-      '<span class="nb">' + nx.id + '</span><span class="nt"><small>Speel volgende</small>' + esc(nx.title) + '</span><span class="play">▶</span></button>' +
+      // Een tik begin die werkblad dadelik (die werkbladblad met "Leer my" is in Boek 1/2). Sonder "Hersiening:" voor die
+      // titel: die nommer pas by die boek, en "Hersiening" lyk soos die app se gemengde oefening.
+      '<button class="nextbtn" data-act="start" data-id="' + nx.id + '" style="--c:' + TERM_COL[nx.term] + '">' +
+      '<span class="nb">' + nx.id + '</span><span class="nt"><small>' + nextLabel(nx) + '</small>' + esc(nx.title.replace(/^Hersiening:\s*/, '')) + '</span><span class="play">▶</span></button>' +
       '<div class="books">' + bookCard(1, b1, '1 & 2') + bookCard(2, b2, '3 & 4') + '</div>' +
       '<button class="btn wide review" data-act="review">🔁 Gemengde oefening: wat jy al ken</button>' +
       installSlot() + strip() + SPONSOR + '</div>', 'bg-home');
