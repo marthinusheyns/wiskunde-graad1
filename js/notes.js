@@ -95,6 +95,10 @@ W.Notes = (function () {
       '<p class="nb-warn" hidden></p>' +
       '<div class="row"><button class="btn ghost" data-m="no">Kanselleer</button><button class="btn go" data-m="send">Stuur ✓</button></div></div>';
     document.body.appendChild(div);
+    // Eie stap in die geskiedenis (as dit met 'n tik oopgemaak is), sodat die terug-knoppie die vorm toemaak
+    var navStep = W.Nav ? W.Nav.open() : false;
+    div.setAttribute('data-nav', navStep ? '1' : '');
+    function shut() { div.remove(); if (W.Nav) W.Nav.close(navStep); }
     var ta = div.querySelector('#notetxt'), ref = div.querySelector('#noteref'), warn = div.querySelector('.nb-warn'), sendBtn = div.querySelector('[data-m=send]');
     var warned = false;
     if (who) ta.focus(); // die eerste keer kies 'n mens eers wie skryf
@@ -110,8 +114,8 @@ W.Notes = (function () {
         return;
       }
       var m = e.target.getAttribute('data-m');
-      if (m === 'no' || e.target === div) return div.remove();
-      if (m === 'done') return div.remove();
+      if (m === 'no' || e.target === div) return shut();
+      if (m === 'done') return shut();
       if (m !== 'send') return;
       var text = ta.value.trim(), r = ref.value.replace(/\s+/g, ' ').trim().slice(0, MAX_REF);
       if (!who) { warn.hidden = false; warn.textContent = 'Kies asseblief eers wie skryf: ouer, onderwyser of ander.'; return; }

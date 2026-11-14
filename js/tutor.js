@@ -24,6 +24,9 @@ W.Tutor = W.Tutor || {};
         '<button class="btn" data-t="pause">⏸</button>' +
         '<button class="btn go" data-t="next">Volgende ➜</button></div></div>';
       document.body.appendChild(ov);
+      // Eie stap in die geskiedenis (as dit met 'n tik oopgemaak is), sodat die terug-knoppie die les toemaak
+      var navStep = W.Nav ? W.Nav.open() : false;
+      ov.setAttribute('data-nav', navStep ? '1' : '');
       var bubble = ov.querySelector('.tbubble'), vis = ov.querySelector('.tvis'), dots = ov.querySelector('.tdots');
       var pauseBtn = ov.querySelector('[data-t=pause]'), nextBtn = ov.querySelector('[data-t=next]');
 
@@ -49,6 +52,7 @@ W.Tutor = W.Tutor || {};
         closed = true; token++;
         W.Voice.stop();
         ov.remove();
+        if (W.Nav) W.Nav.close(navStep);
         resolve();
       }
       ov.addEventListener('click', function (e) {

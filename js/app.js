@@ -17,45 +17,108 @@
   function render(html, cls) {
     clearTimeout(timer);
     W.Voice.stop();
-    backFn = null; // elke skerm sê self waarheen "terug" gaan (onBack)
-    var tst = document.querySelector('.toast'); if (tst) tst.remove();
     $app.className = cls || '';
     $app.innerHTML = html;
     window.scrollTo(0, 0);
   }
 
   /* ============ Terug-knoppie (foon en blaaier) ============
-     Die blaaier se "terug" moet in die app bly, nie die app verlaat nie. Ons hou een ekstra stap in die
-     blaaier se geskiedenis. Druk die kind terug, dan doen die app self wat die ⬅/✕-knoppie sou doen:
-     maak 'n venster of les toe, vra "Wil jy ophou?" in 'n werkblad, of gaan een skerm terug. Op die
-     tuisskerm sê dit eers "Druk weer terug om die app toe te maak", en die tweede keer gaan dit wel weg.
-     (Chrome slaan stappe oor wat sonder 'n tik bygevoeg is; daarom voeg ons die stap ook by elke tik by.) */
-  var backFn = null, exitAt = 0;
-  function onBack(fn) { backFn = fn; }
-  function trap() { try { if (!(history.state && history.state.wg1)) history.pushState({ wg1: 1 }, ''); } catch (e) { } }
-  function toast(text) {
-    var t = document.createElement('div');
-    t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = text;
-    document.body.appendChild(t);
-    setTimeout(function () { t.remove(); }, 2600);
+     Elke skerm wat die kind met 'n tik oopmaak, kry 'n eie stap in die blaaier se geskiedenis, en ook 'n les
+     of venster. Die foon of blaaier se "terug" gaan dan na die vorige skerm, maak 'n les of venster toe, of
+     vra "Wil jy ophou?" in 'n werkblad (twee keer terug: stop en gaan terug). Op die tuisskerm verlaat dit
+     die app, soos ander Android-apps.
+     Chrome slaan stappe oor wat 'n bladsy sonder 'n tik bygevoeg het (en merk dan ook die bladsy self om
+     oor te slaan, sodat "terug" die app verlaat). Daarom: ons voeg net 'n stap by terwyl ons 'n tik hanteer,
+     hoogstens een per tik, en nooit wanneer terug gedruk is nie. Die app se eie ⬅- en 🏠-knoppies stap
+     terug deur die geskiedenis in plaas daarvan om stappe by te voeg, sodat die twee nooit uit pas raak nie. */
+  var Nav = W.Nav = (function () {
+    var tapN = 0, pushN = 0, self = null, then = null, inBack = false;
+    document.addEventListener('click', function () { tapN++; }, true);
+    document.addEventListener('keydown', function (e) { if (!e.repeat && e.key !== 'Escape') tapN++; }, true);
+    function st() { var x = history.state; return x && x.wg ? x : null; }
+    function depth() { var c = st(); return c ? c.nav : 0; }
+    function canPush() {
+      if (tapN <= pushN) return false; // net een stap per tik
+      var ua = navigator.userActivation;
+      return !ua || ua.isActive;
+    }
+    function put(v, push) {
+      try {
+        if (push) { history.pushState({ wg: v, nav: depth() + 1 }, ''); pushN = tapN; }
+        else history.replaceState({ wg: v, nav: depth() }, '');
+      } catch (e) { }
+    }
+    return {
+      st: st, depth: depth,
+      inBack: function () { return inBack; },
+      /* fn hanteer 'n terug-druk: skerms vervang dan net die huidige stap */
+      during: function (fn) { inBack = true; try { fn(); } finally { inBack = false; } },
+      /* Hierdie skerm word gewys. mode 'replace': vervang die huidige stap (bv. die uitslae vervang die werkblad). */
+      here: function (v, mode) {
+        var c = st();
+        if (inBack || mode === 'replace' || !c) return put(v, false);
+        var from = c.wg.v;
+        // Dieselfde soort skerm (bv. 'n ander kwartaal), of weg van die uitslae, die ouerhek of die eerste skerm: vervang
+        if (from === v.v || from === 'results' || from === 'gate' || from === 'first') return put(v, false);
+        put(v, canPush());
+      },
+      /* Sit 'n werkblad se stap terug ná "Nee" (net met 'n tik) */
+      add: function (v) { if (!inBack && canPush()) put(v, true); },
+      /* 'n Les of venster gaan oop: 'n eie stap as dit met 'n tik oopgemaak is. Gee terug of dit 'n stap het. */
+      open: function () {
+        var c = st();
+        if (inBack || !c || !canPush()) return false;
+        put(Object.assign({}, c.wg, { ov: 1 }), true);
+        return true;
+      },
+      /* Dit gaan toe met sy eie knoppie: haal sy stap weg, en doen dan next (nadat die blaaier klaar is) */
+      close: function (pushed, next) {
+        var c = st();
+        if (pushed && !inBack && c && c.wg.ov) { self = 'ov'; then = next || null; history.back(); }
+        else if (next) next();
+      },
+      /* n stappe terug, en wys die skerm daar; is daar nie soveel stappe nie: fallback */
+      back: function (n, fallback) {
+        if (depth() >= n) { self = 'screen'; history.go(-n); } else if (fallback) fallback();
+      },
+      /* Vir die popstate-hanteerder: was dit ons eie stap terug? */
+      take: function () { var x = { self: self, then: then }; self = null; then = null; return x; }
+    };
+  })();
+
+  /* Wys die skerm van 'n stap in die geskiedenis (ná terug) */
+  function showState(v) {
+    v = v || { v: 'home' };
+    sess = null;
+    Nav.during(function () {
+      if (v.v === 'book') showBook(v.b, v.t);
+      else if ((v.v === 'intro' || v.v === 'play' || v.v === 'results') && v.id && byId(v.id)) showIntro(v.id);
+      else if (v.v === 'profiles' || v.v === 'first') showProfiles();
+      else if (v.v === 'newProfile') showNewProfile(false);
+      else if (v.v === 'gate' || v.v === 'parents') showGate();
+      else showHome();
+    });
   }
-  window.addEventListener('popstate', function () {
-    var mods = document.querySelectorAll('.modal'), mod = mods[mods.length - 1];
-    var lesson = document.querySelector('.tutor-ov [data-t="close"]');
-    if (mod) { var no = mod.querySelector('[data-m="no"], [data-m="done"]'); if (no) no.click(); else mod.remove(); }
-    else if (lesson) lesson.click();
-    else if (backFn) backFn();
-    else if (sess) act.quit();
-    else if (Date.now() - exitAt < 3000) { // tweede keer op die tuisskerm: laat die app gaan
-      try { if (window.matchMedia('(display-mode: standalone)').matches) window.close(); } catch (e) { }
-      history.back();
-      return;
-    } else { exitAt = Date.now(); toast('Druk weer terug om die app toe te maak.'); }
-    trap();
+  function goHome() { var n = Nav.depth(); if (n > 0) Nav.back(n, showHome); else { sess = null; showHome(); } }
+
+  window.addEventListener('popstate', function (e) {
+    var v = e.state && e.state.wg ? e.state.wg : null, mine = Nav.take();
+    if (mine.self === 'ov') { if (mine.then) mine.then(); return; } // 'n les/venster het self toegegaan
+    if (mine.self === 'screen') return showState(v);                 // die app se eie ⬅ of 🏠
+    // Die kind het terug gedruk. Eers: 'n venster of les wat oop is
+    var mods = document.querySelectorAll('.modal'), top = mods[mods.length - 1] || document.querySelector('.tutor-ov');
+    if (top) {
+      var pushed = top.getAttribute('data-nav') === '1', quit = top.hasAttribute('data-quit');
+      Nav.during(function () {
+        var x = top.querySelector('[data-m="no"], [data-m="done"], [data-t="close"]');
+        if (x) x.click(); else top.remove();
+      });
+      if (pushed) return;              // sy eie stap is weg: bly op hierdie skerm
+      if (quit) return showState(v);   // "Wil jy ophou?" en weer terug: stop en gaan terug
+    }
+    if (sess && !sess.over) return quitBox(true); // in 'n werkblad: vra eers (die geskiedenis is reeds een stap terug)
+    showState(v);
   });
-  document.addEventListener('pointerdown', trap, true);
-  document.addEventListener('keydown', trap, true);
-  trap();
 
   /* "’n" bly by die volgende woord (Afrikaanse setwerk: nooit alleen aan die einde van 'n reël nie).
      Een plek vir die hele app: elke teks wat op die skerm kom, ook in lesse en vensters. */
@@ -106,7 +169,7 @@
       }).join('') +
       '<button class="person add" data-act="newProfile"><span class="av">＋</span><span>Nuwe speler</span></button></div>' +
       installSlot() + strip() + SPONSOR + '</div>', 'bg-home');
-    onBack(S.current() ? showHome : null);
+    Nav.here({ v: 'profiles' });
     W.Update.check();
   }
   function showNewProfile(first) {
@@ -118,9 +181,9 @@
       '<h2>Kies jou prentjie</h2>' +
       '<div class="avatars">' + AVATARS.map(function (a, i) { return '<button class="avpick' + (i === 0 ? ' on' : '') + '" data-act="av" data-a="' + a + '">' + a + '</button>'; }).join('') + '</div>' +
       '<button class="btn big go" data-act="saveProfile">Klaar ✓</button>' +
-      (first ? '<p class="note fine">' + DISCLAIMER + '</p>' + SPONSOR : '<button class="btn ghost" data-act="profiles">Terug</button>') +
+      (first ? '<p class="note fine">' + DISCLAIMER + '</p>' + SPONSOR : '<button class="btn ghost" data-act="up">Terug</button>') +
       '</div>', 'bg-home');
-    onBack(first ? null : showProfiles);
+    Nav.here({ v: first ? 'first' : 'newProfile' });
     var inp = document.getElementById('pname');
     inp.focus();
     inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') act.saveProfile(); });
@@ -166,6 +229,7 @@
       '<div class="books">' + bookCard(1, b1, '1 & 2') + bookCard(2, b2, '3 & 4') + '</div>' +
       '<button class="btn wide review" data-act="review">🔁 Gemengde oefening: wat jy al ken</button>' +
       installSlot() + strip() + SPONSOR + '</div>', 'bg-home');
+    Nav.here({ v: 'home' });
     W.Update.check();
   }
 
@@ -177,7 +241,7 @@
     var terms = book === 1 ? [1, 2] : [3, 4], d = S.data();
     var list = CUR.filter(function (w) { return w.term === term; });
     render('<div class="page">' +
-      '<header class="hbar"><button class="icon" data-act="home">⬅</button><h1>Boek ' + book + '</h1><span class="total">⭐ ' + S.totalStars() + '</span></header>' +
+      '<header class="hbar"><button class="icon" data-act="up">⬅</button><h1>Boek ' + book + '</h1><span class="total">⭐ ' + S.totalStars() + '</span></header>' +
       '<div class="tabs">' + terms.map(function (t) {
         return '<button class="tab' + (t === term ? ' on' : '') + '" style="--c:' + TERM_COL[t] + '" data-act="term" data-b="' + book + '" data-t="' + t + '">Kwartaal ' + t + '</button>';
       }).join('') + '</div>' +
@@ -186,7 +250,7 @@
         return '<button class="tile' + (info ? ' played' : '') + '" style="--c:' + TERM_COL[w.term] + '" data-act="intro" data-id="' + w.id + '">' +
           '<span class="tnum">' + w.id + '</span><span class="ttitle">' + esc(w.title) + '</span>' + starStr(info ? info.best : 0) + '</button>';
       }).join('') + '</div></div>', 'bg-book');
-    onBack(showHome);
+    Nav.here({ v: 'book', b: book, t: term });
   }
 
   function showIntro(id) {
@@ -196,7 +260,7 @@
       try { skills[W.G[e[0]](e[1]).skill] = 1; } catch (er) { }
     });
     render('<div class="page center">' +
-      '<header class="hbar"><button class="icon" data-act="book" data-b="' + w.book + '">⬅</button><span></span></header>' +
+      '<header class="hbar"><button class="icon" data-act="up">⬅</button><span></span></header>' +
       '<div class="bigbadge" style="--c:' + TERM_COL[w.term] + '">' + w.id + '</div>' +
       '<h1 class="wtitle">' + esc(w.title) + '</h1>' +
       '<p class="meta">Boek ' + w.book + ' · Kwartaal ' + w.term + ' · bladsy ' + w.bl + '</p>' +
@@ -205,7 +269,7 @@
       '<button class="btn big go" data-act="start" data-id="' + w.id + '">▶ Begin</button>' +
       (w.ex.some(function (e) { return W.Tutor.hasLesson(e[0]); }) ? '<br><button class="btn learn" data-act="learn" data-id="' + w.id + '">🐸 Leer my</button>' : '') +
       '</div>', 'bg-book');
-    onBack(function () { showBook(w.book); });
+    Nav.here({ v: 'intro', id: w.id });
   }
 
   /* ============ Speel ============ */
@@ -225,6 +289,7 @@
       ws: ws, review: !!review, items: items.map(function (it) { return Object.assign({ scored: true, state: 'todo' }, it); }),
       i: 0, ft: 0, scoredN: items.length, extra: 0, seen: {}, touched: {}, fbTok: 0
     };
+    Nav.here({ v: 'play', id: ws.id });
     nextQuestion();
   }
   function genQuestion(it) {
@@ -446,7 +511,8 @@
           '<button class="btn big go" data-act="intro" data-id="' + next.id + '">Volgende werkblad ➜</button>' +
           '<button class="btn" data-act="start" data-id="' + ws.id + '">↻ Speel weer</button>') +
       '<button class="btn ghost" data-act="home">🏠 Tuis</button></div></div>', 'bg-home');
-    onBack(function () { var b = !sess.review && ws.book; sess = null; if (b) showBook(ws.book, ws.term); else showHome(); });
+    Nav.here({ v: 'results', id: ws.id }, 'replace'); // die uitslae vervang die werkblad se stap
+    sess.over = true;
     W.Voice.speak(msg);
   }
 
@@ -462,7 +528,7 @@
         'Hier oefen ons wat jy al goed ken. Kry eers 2 of 3 sterre op ’n werkblad, dan kom dit in die gemengde oefening.' :
         'Speel eers ’n paar werkblaaie. Dan maak ons vir jou ’n gemengde oefening van wat jy al goed ken.') + '</p>' +
         '<button class="btn big go" data-act="home">🏠 Tuis</button></div>', 'bg-home');
-      onBack(function () { act.home(); });
+      Nav.here({ v: 'reviewEmpty' });
       return;
     }
     played = good;
@@ -486,11 +552,11 @@
   function showGate() {
     var a = U.rnd(6, 9), b = U.rnd(6, 9);
     sess = null;
-    render('<div class="page center"><header class="hbar"><button class="icon" data-act="home">⬅</button><span></span></header>' +
+    render('<div class="page center"><header class="hbar"><button class="icon" data-act="up">⬅</button><span></span></header>' +
       '<h1>Ouerhoek</h1><p class="lead">Vir ouers en onderwysers. Beantwoord om voort te gaan:</p>' +
       '<p class="gateq">' + a + ' × ' + b + ' = <input id="gate" type="number" inputmode="numeric" class="namein short"></p>' +
       '<button class="btn go" data-act="gate" data-a="' + (a * b) + '">Gaan voort</button></div>', 'bg-book');
-    onBack(function () { act.home(); });
+    Nav.here({ v: 'gate' });
     var g = document.getElementById('gate'); g.focus();
     g.addEventListener('keydown', function (e) { if (e.key === 'Enter') act.gate({ a: String(a * b) }); });
   }
@@ -520,7 +586,7 @@
       W.Say.available() ? 'Afrikaanse stem op hierdie toestel: <b>' + esc(W.Say.voiceName()) + '</b> <button class="btn small" data-act="testVoice">Toets</button>' :
       'Die stem kon nie gelaai word nie. Maak seker jy is aan die internet gekoppel en probeer weer.';
     render('<div class="page parents">' +
-      '<header class="hbar"><button class="icon" data-act="home">⬅</button><h1>Ouerhoek</h1><span></span></header>' +
+      '<header class="hbar"><button class="icon" data-act="up">⬅</button><h1>Ouerhoek</h1><span></span></header>' +
       '<section><h2>' + p.avatar + ' ' + esc(p.name) + ' se vordering</h2>' +
       '<table class="ptable">' + termRows + '</table></section>' +
       tutorReport(p, d) +
@@ -549,7 +615,7 @@
       'Verkeerde antwoorde kry eers ’n wenk; ná ’n tweede fout wys die app die antwoord en kom later met ’n soortgelyke vraag terug. Vordering word net op hierdie toestel gestoor. Weergawe ' + W.VERSION + '.</p>' +
       '<p class="note">' + DISCLAIMER + '</p>' + SPONSOR + '</section>' +
       '</div>', 'bg-book');
-    onBack(function () { act.home(); });
+    Nav.here({ v: 'parents' });
     document.getElementById('qc').addEventListener('change', function (e) { S.setSetting('qCount', +e.target.value); });
     document.getElementById('as').addEventListener('change', function (e) { S.setSetting('autoSpeak', e.target.checked); });
     document.getElementById('snd').addEventListener('change', function (e) { S.setSetting('sound', e.target.checked); });
@@ -582,20 +648,35 @@
     return html;
   }
 
-  function confirmBox(text, yes, onYes) {
+  /* quit: dis die "Wil jy ophou?"-vraag (terug-knoppie: weer terug = stop) */
+  function confirmBox(text, yes, onYes, onNo, quit) {
     var div = document.createElement('div');
     div.className = 'modal';
+    if (quit) div.setAttribute('data-quit', '');
     div.innerHTML = '<div class="mbox"><p>' + esc(text) + '</p><div class="row"><button class="btn ghost" data-m="no">Nee</button><button class="btn go" data-m="yes">' + esc(yes) + '</button></div></div>';
     document.body.appendChild(div);
+    var pushed = Nav.open();
+    div.setAttribute('data-nav', pushed ? '1' : '');
     div.addEventListener('click', function (e) {
       var m = e.target.getAttribute('data-m');
-      if (m === 'yes') { div.remove(); onYes(); } else if (m === 'no' || e.target === div) div.remove();
+      if (m === 'yes') { div.remove(); Nav.close(pushed, onYes); }
+      else if (m === 'no' || e.target === div) { div.remove(); Nav.close(pushed, onNo); }
     });
+  }
+  /* "Wil jy ophou met hierdie werkblad?" fromBack: die terug-knoppie het dit gevra (die werkblad se stap is reeds weg) */
+  function quitBox(fromBack) {
+    var ws = sess && sess.ws;
+    confirmBox('Wil jy ophou met hierdie werkblad?', 'Ja, stop', function () {
+      if (fromBack) { var c = Nav.st(); showState(c && c.wg); }
+      else Nav.back(1, function () { sess = null; showHome(); }); // die werkblad se stap weg: die vorige skerm
+    }, function () {
+      if (fromBack && ws) Nav.add({ v: 'play', id: ws.id }); // Nee: sit die werkblad se stap terug
+    }, true);
   }
 
   /* ============ Aksies ============ */
   var act = {
-    pick: function (d) { S.setCurrent(d.id); showHome(); },
+    pick: function (d) { S.setCurrent(d.id); goHome(); },
     newProfile: function () { showNewProfile(false); },
     profiles: function () { showProfiles(); },
     av: function (d, el) { document.querySelectorAll('.avpick').forEach(function (b) { b.classList.remove('on'); }); el.classList.add('on'); },
@@ -604,9 +685,10 @@
       if (!name) { document.getElementById('pname').classList.add('shake'); return; }
       var av = document.querySelector('.avpick.on');
       S.addProfile(name, av ? av.getAttribute('data-a') : '🦁');
-      showHome();
+      goHome();
     },
-    home: function () { sess = null; showHome(); },
+    home: function () { goHome(); },
+    up: function () { if (Nav.depth() > 0) Nav.back(1); else { sess = null; showHome(); } }, // die ⬅-knoppies: soos terug
     book: function (d) { showBook(+d.b); },
     term: function (d) { showBook(+d.b, +d.t); },
     intro: function (d) { sess = null; showIntro(d.id); },
@@ -643,13 +725,7 @@
       W.Tutor.play(W.LESSONS[e[0]](q, W.AF.PHRASES.learn), { done: 'Klaar ✓' });
     },
     sayopt: function (d) { var o = sess.q.input.options[+d.i]; W.Voice.speak(o.label); },
-    quit: function () {
-      confirmBox('Wil jy ophou met hierdie werkblad?', 'Ja, stop', function () {
-        var ws = sess && sess.ws;
-        sess = null;
-        if (ws && ws.book) showBook(ws.book, ws.term); else showHome();
-      });
-    },
+    quit: function () { quitBox(false); },
     next: function () { advance(); },
     choose: function (d, el) {
       if (sess.locked || el.disabled) return;

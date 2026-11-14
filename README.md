@@ -66,9 +66,13 @@ It is a static web app with no build step and no dependencies.
 - **Releasing:** bump `W.VERSION` in `js/util.js` and `CACHE` in `sw.js` together. The version is
   shown at the bottom of the first screens ("Weergawe 1.4") and in the parents' section, and sent
   with every note, so you know which build a note is about.
-- **Back button** (phone or browser): stays in the app. It closes a lesson or pop-up, asks "Wil jy
-  ophou?" during a worksheet, or goes one screen back (the same as the screen's ⬅ button). On the home
-  screen it first says "Druk weer terug om die app toe te maak"; the second press leaves.
+- **Back button** (phone or browser): stays in the app. Every screen, lesson or pop-up that the child
+  opens with a tap gets its own step in the browser history, so back goes to the previous screen, closes
+  a lesson or pop-up, or asks "Wil jy ophou?" during a worksheet (back again stops it). On the home
+  screen back leaves the app, like other Android apps. Chrome skips history steps that a page adds
+  without a tap (and then also skips the page itself, so back leaves the app), so the app only adds a
+  step while handling a tap, at most one per tap, and never when back is pressed. The app's own ⬅ and
+  🏠 buttons step back through the history instead of adding steps (`Nav` in `js/app.js`).
 - **How phones get updates:** with internet, the app always loads the newest files. `sw.js` asks the
   server each time whether a file has changed, so it never uses an old copy from the browser's
   cache. Phones often keep the app open in the background for days, so `js/update.js` also checks
